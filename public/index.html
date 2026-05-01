@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>sing-box 订阅转换</title>
+    <link rel="stylesheet" href="/style.css">
+  </head>
+  <body>
+    <main class="app">
+      <section id="loginView" class="panel auth-panel">
+        <h1>sing-box 订阅转换</h1>
+        <form id="loginForm" class="stack">
+          <label>
+            管理密码
+            <input id="passwordInput" type="password" autocomplete="current-password" required>
+          </label>
+          <button type="submit">登录</button>
+          <p id="loginError" class="error" hidden></p>
+        </form>
+      </section>
+
+      <section id="managerView" class="manager" hidden>
+        <header class="topbar">
+          <div>
+            <h1>sing-box 订阅转换</h1>
+            <p id="statusText">已加载</p>
+          </div>
+          <button id="logoutButton" class="secondary" type="button">退出</button>
+        </header>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <h2>订阅链接</h2>
+              <p>配置端点返回纯 JSON，可直接用于 curl 或 sing-box 客户端。</p>
+            </div>
+            <button id="copyButton" class="secondary" type="button">复制链接</button>
+          </div>
+          <input id="subscriptionLink" readonly>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <h2>上游订阅源</h2>
+              <p>多个订阅会先按源分组，再按香港、日本、亚太、美国、其他分组。</p>
+            </div>
+            <div class="actions">
+              <button id="addSourceButton" class="secondary" type="button">新增</button>
+              <button id="previewButton" class="secondary" type="button">预览</button>
+              <button id="saveButton" type="button">保存</button>
+            </div>
+          </div>
+          <div id="sourcesList" class="sources"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <h2>解析结果</h2>
+              <p>预览只读取上游订阅，不修改保存内容。</p>
+            </div>
+          </div>
+          <div id="previewOutput" class="preview muted">暂无预览</div>
+        </section>
+      </section>
+    </main>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "name": "sing-box-conv",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Private sing-box subscription converter service",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

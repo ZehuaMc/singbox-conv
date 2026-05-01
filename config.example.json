@@ -1,0 +1,245 @@
+{
+  "log": {
+    "level": "info",
+    "output": "sing-box.log",
+    "timestamp": true
+  },
+  "dns": {
+    "servers": [
+      {
+        "type": "udp",
+        "tag": "default-dns",
+        "server": "223.5.5.5"
+      },
+      {
+        "type": "https",
+        "tag": "cloudflare",
+        "detour": "🚀 手动选择",
+        "server": "1.1.1.1",
+        "domain_resolver": "default-dns"
+      },
+      {
+        "type": "https",
+        "tag": "cf_resident",
+        "detour": "🏠 家宽",
+        "server": "1.1.1.1",
+        "domain_resolver": "default-dns"
+      },
+      {
+        "type": "https",
+        "tag": "block-dns",
+        "detour": "🚨 Block",
+        "server": "1.1.1.1",
+        "domain_resolver": "default-dns"
+      },
+      {
+        "type": "https",
+        "tag": "google-dns",
+        "detour": "🔦 Google",
+        "server": "1.1.1.1",
+        "domain_resolver": "default-dns"
+      }
+    ],
+    "rules": [
+      {
+        "query_type": "HTTPS",
+        "action": "reject"
+      },
+      {
+        "clash_mode": "global",
+        "server": "cloudflare"
+      },
+      {
+        "rule_set": "ai",
+        "server": "cf_resident"
+      },
+      {
+        "rule_set": "block",
+        "server": "block-dns"
+      },
+      {
+        "rule_set": "google",
+        "server": "google-dns"
+      },
+      {
+        "rule_set": "cnsite",
+        "server": "default-dns"
+      }
+    ],
+    "final": "cloudflare",
+    "strategy": "ipv4_only",
+    "disable_cache": true,
+    "independent_cache": true
+  },
+  "ntp": {
+    "enabled": true,
+    "interval": "30m0s",
+    "server": "time.apple.com",
+    "server_port": 123
+  },
+  "inbounds": [
+    {
+      "type": "mixed",
+      "tag": "mixed-in",
+      "listen": "127.0.0.1",
+      "listen_port": 4654,
+      "set_system_proxy": false
+    },
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "mtu": 9000,
+      "address": [
+        "172.18.0.1/30"
+      ],
+      "auto_route": true,
+      "strict_route": true,
+      "route_exclude_address": [
+        "10.0.0.0/8",
+        "100.64.0.0/10",
+        "169.254.0.0/16",
+        "172.16.0.0/12",
+        "192.0.0.0/24",
+        "192.168.0.0/16",
+        "224.0.0.0/4",
+        "240.0.0.0/4",
+        "255.255.255.255/32",
+        "fe80::/10",
+        "fd00::/8",
+        "ff00::/8"
+      ],
+      "platform": {
+        "http_proxy": {
+          "server": "127.0.0.1",
+          "server_port": 7890
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct-out"
+    },
+    {
+      "type": "selector",
+      "tag": "🚀 手动选择",
+      "outbounds": [
+        "direct-out"
+      ],
+      "default": "direct-out"
+    },
+    {
+      "type": "selector",
+      "tag": "🏠 家宽",
+      "outbounds": [
+        "🚀 手动选择",
+        "direct-out"
+      ],
+      "default": "🚀 手动选择"
+    },
+    {
+      "type": "selector",
+      "tag": "📠 电报",
+      "outbounds": [
+        "🚀 手动选择",
+        "direct-out"
+      ],
+      "default": "🚀 手动选择"
+    },
+    {
+      "type": "selector",
+      "tag": "🚨 Block",
+      "outbounds": [
+        "🚀 手动选择",
+        "direct-out"
+      ],
+      "default": "🚀 手动选择"
+    },
+    {
+      "type": "selector",
+      "tag": "🔦 Google",
+      "outbounds": [
+        "🚀 手动选择",
+        "direct-out"
+      ],
+      "default": "🚀 手动选择"
+    }
+  ],
+  "route": {
+    "rules": [
+      {
+        "action": "sniff"
+      },
+      {
+        "protocol": "dns",
+        "action": "hijack-dns"
+      },
+      {
+        "clash_mode": "direct",
+        "outbound": "direct-out"
+      },
+      {
+        "clash_mode": "global",
+        "outbound": "🚀 手动选择"
+      },
+      {
+        "rule_set": "cnsite",
+        "outbound": "direct-out"
+      },
+      {
+        "rule_set": "google",
+        "outbound": "🔦 Google"
+      },
+      {
+        "rule_set": "telegram",
+        "outbound": "📠 电报"
+      },
+      {
+        "rule_set": "block",
+        "outbound": "🚨 Block"
+      }
+    ],
+    "final": "🚀 手动选择",
+    "auto_detect_interface": true
+  },
+  "route_set": [
+    {
+      "type": "remote",
+      "tag": "cnsite",
+      "format": "binary",
+      "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-cn.srs",
+      "download_detour": "🚀 手动选择"
+    },
+    {
+      "type": "remote",
+      "tag": "google",
+      "format": "binary",
+      "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-google.srs",
+      "download_detour": "🚀 手动选择"
+    },
+    {
+      "type": "remote",
+      "tag": "telegram",
+      "format": "binary",
+      "url": "https://raw.githubusercontent.com/SagerNet/sing-geoip/rule-set/geoip-telegram.srs",
+      "download_detour": "🚀 手动选择"
+    },
+    {
+      "type": "remote",
+      "tag": "block",
+      "format": "binary",
+      "url": "https://raw.githubusercontent.com/SagerNet/sing-geosite/rule-set/geosite-category-ads-all.srs",
+      "download_detour": "🚀 手动选择"
+    }
+  ],
+  "experimental": {
+    "cache_file": {
+      "enabled": true
+    },
+    "clash_api": {
+      "external_controller": "127.0.0.1:9090",
+      "default_mode": "rule"
+    }
+  }
+}
