@@ -30,6 +30,156 @@ ADMIN_PASSWORD='change-me' npm start
 
 如果没有设置 `SUB_TOKEN`，程序会在首次启动时自动生成一个随机令牌，并写入 `data/token.txt`。
 
+## 服务器部署
+
+下面示例以 Debian/Ubuntu 服务器为例，默认把服务部署到 `/opt/sing-box-conv`，用 systemd 常驻运行，并可选通过 Nginx 反向代理到公网域名。命令里的域名、密码和令牌请替换成你自己的值。
+
+### 1. 准备运行环境
+
+安装 Node.js 20 或更新版本、Git 和 Nginx：
+
+```bash
+sudo apt update
+sudo apt install -y git curl nginx
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+node -v
+```
+
+如果服务器已经有 Node.js 20+，可以跳过 NodeSource 安装步骤。
+
+### 2. 克隆项目
+
+```bash
+sudo mkdir -p /opt/sing-box-conv
+sudo chown "$USER:$USER" /opt/sing-box-conv
+git clone git@github.com:ZehuaMc/singbox-conv.git /opt/sing-box-conv
+cd /opt/sing-box-conv
+```
+
+当前项目没有生产依赖，克隆后可以直接运行。以后如果 `package.json` 增加了 `dependencies`，部署时再执行：
+
+```bash
+npm install --omit=dev
+```
+
+### 3. 准备配置和环境变量
+
+复制模板配置，并按需修改你的 sing-box 基础配置：
+
+```bash
+cd /opt/sing-box-conv
+cp config.example.json config.json
+nano config.json
+```
+
+创建 systemd 使用的环境变量文件：
+
+```bash
+sudo tee /etc/sing-box-conv.env >/dev/null <<'EOF'
+HOST=127.0.0.1
+PORT=3000
+ADMIN_PASSWORD=change-this-admin-password
+SUB_TOKEN=change-this-subscription-token
+EOF
+sudo chmod 600 /etc/sing-box-conv.env
+```
+
+建议在服务器上显式设置 `SUB_TOKEN`，这样重建 `data/` 或迁移服务器后订阅地址不会变化。如果不设置，程序会自动生成令牌并保存到 `data/token.txt`。
+
+### 4. 配置 systemd 服务
+
+创建 `/etc/systemd/system/sing-box-conv.service`：
+
+```bash
+sudo tee /etc/systemd/system/sing-box-conv.service >/dev/null <<'EOF'
+[Unit]
+Description=sing-box-conv subscription converter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/sing-box-conv
+EnvironmentFile=/etc/sing-box-conv.env
+ExecStart=/usr/bin/npm start
+Restart=on-failure
+RestartSec=5
+User=singboxconv
+Group=singboxconv
+
+[Install]
+WantedBy=multi-user.target
+EOF
+```
+
+创建服务用户，把项目目录交给该用户，然后启动服务：
+
+```bash
+sudo useradd --system --home /opt/sing-box-conv --shell /usr/sbin/nologin singboxconv
+sudo chown -R singboxconv:singboxconv /opt/sing-box-conv
+sudo systemctl daemon-reload
+sudo systemctl enable --now sing-box-conv
+sudo systemctl status sing-box-conv
+```
+
+本机检查：
+
+```bash
+curl http://127.0.0.1:3000/healthz
+```
+
+返回 `{"ok":true}` 说明服务已经启动。
+
+### 5. 可选：配置 Nginx 反向代理
+
+如果要通过域名访问，例如 `https://sub.example.com`，可以让 Node 服务只监听 `127.0.0.1:3000`，再用 Nginx 对外提供 HTTPS。
+
+创建 Nginx 站点配置：
+
+```bash
+sudo tee /etc/nginx/sites-available/sing-box-conv >/dev/null <<'EOF'
+server {
+    listen 80;
+    server_name sub.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+EOF
+sudo ln -s /etc/nginx/sites-available/sing-box-conv /etc/nginx/sites-enabled/sing-box-conv
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+HTTPS 可以用 Certbot 配置：
+
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot --nginx -d sub.example.com
+```
+
+然后访问：
+
+- 管理页：`https://sub.example.com/`
+- 订阅地址：`https://sub.example.com/sub/<SUB_TOKEN>/config.json`
+
+### 6. 更新部署
+
+```bash
+cd /opt/sing-box-conv
+git pull
+sudo chown -R singboxconv:singboxconv /opt/sing-box-conv
+sudo systemctl restart sing-box-conv
+sudo journalctl -u sing-box-conv -n 100 --no-pager
+```
+
 ## 使用
 
 1. 打开 `http://localhost:3000/`
