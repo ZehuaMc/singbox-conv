@@ -11,6 +11,9 @@ export const EXAMPLE_TEMPLATE_PATH = path.join(ROOT_DIR, 'config.example.json');
 export const SOURCES_PATH = process.env.SOURCES_PATH
   ? path.resolve(process.env.SOURCES_PATH)
   : path.join(DATA_DIR, 'sources.json');
+export const SUBSCRIPTION_CACHE_DIR = process.env.SUBSCRIPTION_CACHE_DIR
+  ? path.resolve(process.env.SUBSCRIPTION_CACHE_DIR)
+  : path.join(DATA_DIR, 'subscription-cache');
 export const TOKEN_PATH = process.env.TOKEN_PATH
   ? path.resolve(process.env.TOKEN_PATH)
   : path.join(DATA_DIR, 'token.txt');

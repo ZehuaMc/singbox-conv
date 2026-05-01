@@ -44,7 +44,7 @@
           <div class="section-head">
             <div>
               <h2>上游订阅源</h2>
-              <p>多个订阅会先按源分组，再按香港、日本、亚太、美国、其他分组。</p>
+              <p>多个订阅会先按源分组，再汇总到香港、日本、亚太、美国、其他总分组。</p>
             </div>
             <div class="actions">
               <button id="addSourceButton" class="secondary" type="button">新增</button>
@@ -58,11 +58,64 @@
         <section class="panel">
           <div class="section-head">
             <div>
+              <h2>手动出站</h2>
+              <p>输入完整 sing-box outbound JSON，Detour 会写入 JSON 内同名字段。</p>
+            </div>
+            <div class="actions">
+              <button id="addManualOutboundButton" class="secondary" type="button">新增</button>
+              <button id="saveManualOutboundsButton" type="button">保存</button>
+            </div>
+          </div>
+          <datalist id="detourOptions">
+            <option value="🚀 手动选择"></option>
+            <option value="香港"></option>
+            <option value="日本"></option>
+            <option value="亚太"></option>
+            <option value="美国"></option>
+            <option value="其他"></option>
+            <option value="direct-out"></option>
+          </datalist>
+          <div id="manualOutboundsList" class="manual-outbounds"></div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <h2>config.json</h2>
+              <p>编辑基础 sing-box 配置模板；生成订阅时会保留模板内容并重建 outbounds。</p>
+            </div>
+            <div class="actions">
+              <button id="reloadConfigButton" class="secondary" type="button">重载</button>
+              <button id="formatConfigButton" class="secondary" type="button">格式化</button>
+              <button id="saveConfigButton" type="button">保存</button>
+            </div>
+          </div>
+          <textarea id="configEditor" class="config-editor" spellcheck="false" autocomplete="off"></textarea>
+          <p id="configMeta" class="config-meta muted">尚未加载</p>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
               <h2>解析结果</h2>
               <p>预览只读取上游订阅，不修改保存内容。</p>
             </div>
           </div>
           <div id="previewOutput" class="preview muted">暂无预览</div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <h2>运行日志</h2>
+              <p>显示服务启动、登录、保存、预览、订阅生成和错误事件。</p>
+            </div>
+            <div class="actions">
+              <button id="refreshLogsButton" class="secondary" type="button">刷新</button>
+              <button id="clearLogsButton" class="secondary" type="button">清空</button>
+            </div>
+          </div>
+          <div id="logsOutput" class="logs muted">暂无日志</div>
         </section>
       </section>
     </main>
