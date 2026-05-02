@@ -412,19 +412,12 @@ function normalizeManualOutbounds(manualOutbounds) {
     if (!type) {
       throw new HttpError(400, `manual outbound #${index + 1} missing outbound.type`);
     }
-    const outboundDetour = typeof outbound.detour === 'string' ? outbound.detour.trim() : '';
-    const legacyRegionDetour = String(item.region || '').trim();
-    const detour = outboundDetour || legacyRegionDetour;
     const normalizedOutbound = {
       ...outbound,
       tag,
       type,
     };
-    if (detour) {
-      normalizedOutbound.detour = detour;
-    } else {
-      delete normalizedOutbound.detour;
-    }
+    delete normalizedOutbound.detour;
 
     return {
       id: item.id ? String(item.id) : crypto.randomUUID(),
@@ -677,7 +670,6 @@ function summarizeManualOutbounds(manualOutbounds) {
     enabled: item.enabled !== false,
     type: item.outbound?.type || '',
     tag: item.outbound?.tag || '',
-    detour: typeof item.outbound?.detour === 'string' ? item.outbound.detour : '',
   }));
 }
 

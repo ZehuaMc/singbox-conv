@@ -77,14 +77,7 @@ function normalizePersistedManualOutbounds(manualOutbounds) {
     .filter((item) => item && typeof item === 'object')
     .map((item) => {
       const outbound = isPlainObject(item.outbound) ? { ...item.outbound } : {};
-      const outboundDetour = typeof outbound.detour === 'string' ? outbound.detour.trim() : '';
-      const legacyRegionDetour = String(item.region || '').trim();
-      const detour = outboundDetour || legacyRegionDetour;
-      if (detour) {
-        outbound.detour = detour;
-      } else {
-        delete outbound.detour;
-      }
+      delete outbound.detour;
       return {
         id: String(item.id || ''),
         enabled: item.enabled !== false,

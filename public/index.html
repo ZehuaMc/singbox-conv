@@ -59,22 +59,13 @@
           <div class="section-head">
             <div>
               <h2>手动出站</h2>
-              <p>输入完整 sing-box outbound JSON，Detour 会写入 JSON 内同名字段。</p>
+              <p>输入完整 sing-box outbound JSON；每个手动出站会生成自己的 Detour selector。</p>
             </div>
             <div class="actions">
               <button id="addManualOutboundButton" class="secondary" type="button">新增</button>
               <button id="saveManualOutboundsButton" type="button">保存</button>
             </div>
           </div>
-          <datalist id="detourOptions">
-            <option value="🚀 手动选择"></option>
-            <option value="香港"></option>
-            <option value="日本"></option>
-            <option value="亚太"></option>
-            <option value="美国"></option>
-            <option value="其他"></option>
-            <option value="direct-out"></option>
-          </datalist>
           <div id="manualOutboundsList" class="manual-outbounds"></div>
         </section>
 

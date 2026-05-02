@@ -19,9 +19,6 @@ const previewOutput = document.querySelector('#previewOutput');
 const logsOutput = document.querySelector('#logsOutput');
 const configEditor = document.querySelector('#configEditor');
 const configMeta = document.querySelector('#configMeta');
-const detourOptionValues = [...document.querySelectorAll('#detourOptions option')]
-  .map((option) => option.value)
-  .filter(Boolean);
 
 document.querySelector('#addSourceButton').addEventListener('click', () => {
   readSourcesFromDom();
@@ -59,18 +56,6 @@ document.querySelector('#clearLogsButton').addEventListener('click', clearLogs);
 document.querySelector('#reloadConfigButton').addEventListener('click', () => loadTemplate());
 document.querySelector('#formatConfigButton').addEventListener('click', formatTemplate);
 document.querySelector('#saveConfigButton').addEventListener('click', saveTemplate);
-
-document.addEventListener('click', (event) => {
-  if (!event.target.closest('.detour-combobox')) {
-    closeDetourMenus();
-  }
-});
-
-document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape') {
-    closeDetourMenus();
-  }
-});
 
 loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -345,14 +330,6 @@ function renderManualOutbounds() {
           <input data-field="enabled" type="checkbox">
           启用
         </label>
-        <label>
-          Detour
-          <div class="detour-combobox">
-            <input data-field="detour" autocomplete="off" placeholder="🚀 手动选择 / 香港 / direct-out" aria-haspopup="listbox" aria-expanded="false">
-            <button class="secondary detour-menu-button" type="button" title="显示 Detour 选项" aria-label="显示 Detour 选项">▼</button>
-            <div class="detour-menu" role="listbox" hidden></div>
-          </div>
-        </label>
         <button class="secondary remove-button" type="button">删除</button>
       </div>
       <label>
@@ -361,9 +338,6 @@ function renderManualOutbounds() {
       </label>
     `;
     row.querySelector('[data-field="enabled"]').checked = item.enabled !== false;
-    const detourInput = row.querySelector('[data-field="detour"]');
-    detourInput.value = getManualOutboundDetour(item);
-    setupDetourCombobox(row);
     row.querySelector('[data-field="outbound"]').value = JSON.stringify(outbound, null, 2);
     row.querySelector('.remove-button').addEventListener('click', () => {
       readSourcesFromDom();
@@ -373,58 +347,6 @@ function renderManualOutbounds() {
       renderManualOutbounds();
     });
     manualOutboundsList.append(row);
-  }
-}
-
-function setupDetourCombobox(row) {
-  const input = row.querySelector('[data-field="detour"]');
-  const menu = row.querySelector('.detour-menu');
-  const button = row.querySelector('.detour-menu-button');
-  menu.replaceChildren(...detourOptionValues.map((value) => {
-    const option = document.createElement('button');
-    option.className = 'detour-option';
-    option.type = 'button';
-    option.setAttribute('role', 'option');
-    option.textContent = value;
-    option.addEventListener('click', () => {
-      input.value = value;
-      closeDetourMenus();
-      input.focus();
-    });
-    return option;
-  }));
-
-  input.addEventListener('focus', () => openDetourMenu(row));
-  input.addEventListener('click', () => openDetourMenu(row));
-  button.addEventListener('click', () => {
-    if (menu.hidden) {
-      input.focus();
-      openDetourMenu(row);
-      return;
-    }
-    closeDetourMenus();
-  });
-}
-
-function openDetourMenu(row) {
-  closeDetourMenus(row);
-  const input = row.querySelector('[data-field="detour"]');
-  const menu = row.querySelector('.detour-menu');
-  input.setAttribute('aria-expanded', 'true');
-  menu.hidden = false;
-}
-
-function closeDetourMenus(exceptRow) {
-  for (const row of manualOutboundsList.querySelectorAll('.manual-row')) {
-    if (row === exceptRow) {
-      continue;
-    }
-    const input = row.querySelector('[data-field="detour"]');
-    const menu = row.querySelector('.detour-menu');
-    if (input && menu) {
-      input.setAttribute('aria-expanded', 'false');
-      menu.hidden = true;
-    }
   }
 }
 
@@ -501,7 +423,7 @@ function readManualOutboundsFromDom(skipId = '') {
     manualOutbounds.push({
       id: row.dataset.id,
       enabled: row.querySelector('[data-field="enabled"]').checked,
-      outbound: applyManualDetour(outbound, row.querySelector('[data-field="detour"]').value),
+      outbound: normalizeManualOutboundForSave(outbound),
     });
   }
   state.manualOutbounds = manualOutbounds;
@@ -512,31 +434,11 @@ function getManualOutboundForDisplay(item) {
   const outbound = item.outbound && typeof item.outbound === 'object' && !Array.isArray(item.outbound)
     ? { ...item.outbound }
     : {};
-  const detour = getManualOutboundDetour(item);
-  if (detour) {
-    outbound.detour = detour;
-  }
+  delete outbound.detour;
   return outbound;
 }
 
-function getManualOutboundDetour(item) {
-  if (typeof item.outbound?.detour === 'string' && item.outbound.detour.trim()) {
-    return item.outbound.detour.trim();
-  }
-  if (typeof item.region === 'string') {
-    return item.region.trim();
-  }
-  return '';
-}
-
-function applyManualDetour(outbound, value) {
-  const detour = value.trim();
-  if (detour) {
-    return {
-      ...outbound,
-      detour,
-    };
-  }
+function normalizeManualOutboundForSave(outbound) {
   const next = { ...outbound };
   delete next.detour;
   return next;
