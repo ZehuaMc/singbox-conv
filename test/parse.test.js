@@ -29,21 +29,43 @@ test('parses vmess json link', () => {
     host: 'host.example.com',
     tls: 'tls',
     sni: 'sni.example.com',
+    fp: 'chrome',
   })).toString('base64');
   const outbound = parseShareLink(`vmess://${encoded}`);
   assert.equal(outbound.type, 'vmess');
   assert.equal(outbound.tag, '日本01');
   assert.equal(outbound.transport.type, 'ws');
   assert.equal(outbound.tls.server_name, 'sni.example.com');
+  assert.deepEqual(outbound.tls.utls, { enabled: true, fingerprint: 'chrome' });
+});
+
+test('parses vless reality grpc extras', () => {
+  const outbound = parseShareLink('vless://00000000-0000-0000-0000-000000000000@example.com:443?type=grpc&security=reality&flow=&pbk=public-key&sid=short-id&sni=sni.example.com&serviceName=update&fp=chrome#美国VLESS');
+  assert.equal(outbound.type, 'vless');
+  assert.equal(outbound.tag, '美国VLESS');
+  assert.equal(outbound.packet_encoding, 'packetaddr');
+  assert.equal(outbound.flow, '');
+  assert.equal(outbound.tls.server_name, 'sni.example.com');
+  assert.deepEqual(outbound.tls.reality, {
+    enabled: true,
+    public_key: 'public-key',
+    short_id: 'short-id',
+  });
+  assert.deepEqual(outbound.tls.utls, { enabled: true, fingerprint: 'chrome' });
+  assert.deepEqual(outbound.transport, { type: 'grpc', service_name: 'update' });
 });
 
 test('parses tuic link', () => {
-  const outbound = parseShareLink('tuic://00000000-0000-0000-0000-000000000000:secret@example.com:443?sni=tuic.example.com#美国TUIC');
+  const outbound = parseShareLink('tuic://00000000-0000-0000-0000-000000000000:secret@example.com:443?congestion_control=bbr&udp_relay_mode=native&alpn=h3&sni=tuic.example.com#美国TUIC');
   assert.equal(outbound.type, 'tuic');
   assert.equal(outbound.tag, '美国TUIC');
   assert.equal(outbound.uuid, '00000000-0000-0000-0000-000000000000');
   assert.equal(outbound.password, 'secret');
+  assert.equal(outbound.congestion_control, 'bbr');
+  assert.equal(outbound.udp_relay_mode, 'native');
+  assert.equal(outbound.zero_rtt_handshake, false);
   assert.equal(outbound.tls.server_name, 'tuic.example.com');
+  assert.deepEqual(outbound.tls.alpn, ['h3']);
 });
 
 test('extracts usable proxy outbounds from sing-box JSON subscription', () => {

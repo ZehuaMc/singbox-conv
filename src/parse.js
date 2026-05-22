@@ -274,6 +274,7 @@ function parseVmess(link) {
       serverName: json.sni || json.host,
       insecure: json.allowInsecure,
       alpn: json.alpn,
+      fingerprint: json.fp || json.fingerprint,
     });
   }
 
@@ -299,6 +300,7 @@ function parseTrojan(link) {
     serverName: url.searchParams.get('sni') || url.searchParams.get('peer') || server,
     insecure: url.searchParams.get('allowInsecure') || url.searchParams.get('skip-cert-verify'),
     alpn: url.searchParams.get('alpn'),
+    fingerprint: url.searchParams.get('fp') || url.searchParams.get('fingerprint'),
   });
   addTransport(outbound, url.searchParams);
   return outbound;
@@ -310,6 +312,7 @@ function parseVless(link) {
   const port = toPort(url.port || '443');
   const uuid = percentDecode(url.username);
   assertRequired({ server, port, uuid });
+  const security = url.searchParams.get('security');
 
   const outbound = {
     type: 'vless',
@@ -317,16 +320,17 @@ function parseVless(link) {
     server,
     server_port: port,
     uuid,
-    flow: url.searchParams.get('flow') || undefined,
+    packet_encoding: getVlessPacketEncoding(url.searchParams, security),
+    flow: getFirstParam(url.searchParams, ['flow']),
   };
   removeUndefined(outbound);
 
-  const security = url.searchParams.get('security');
   if (security === 'tls' || security === 'reality') {
     outbound.tls = buildTls({
       serverName: url.searchParams.get('sni') || url.searchParams.get('peer') || server,
       insecure: url.searchParams.get('allowInsecure') || url.searchParams.get('skip-cert-verify'),
       alpn: url.searchParams.get('alpn'),
+      fingerprint: url.searchParams.get('fp') || url.searchParams.get('fingerprint'),
     });
     if (security === 'reality') {
       outbound.tls.reality = {
@@ -393,6 +397,14 @@ function parseTuic(link) {
     uuid,
     password,
     congestion_control: url.searchParams.get('congestion_control') || url.searchParams.get('congestion-control') || undefined,
+    udp_relay_mode: url.searchParams.get('udp_relay_mode') || url.searchParams.get('udp-relay-mode') || undefined,
+    zero_rtt_handshake: parseBooleanParam(url.searchParams, [
+      'zero_rtt_handshake',
+      'zero-rtt-handshake',
+      'zero_rtt',
+      'zero-rtt',
+      'zeroRTTHandshake',
+    ]) ?? false,
   };
   removeUndefined(outbound);
 
@@ -456,7 +468,38 @@ function addPluginTransport(outbound, params) {
   }
 }
 
-function buildTls({ serverName, insecure, alpn } = {}) {
+function getVlessPacketEncoding(params, security) {
+  const explicit = getFirstParam(params, [
+    'packet_encoding',
+    'packet-encoding',
+    'packetEncoding',
+  ]);
+  if (explicit) {
+    return explicit;
+  }
+
+  const transport = params.get('type') || params.get('net');
+  if (security === 'reality' && transport === 'grpc') {
+    return 'packetaddr';
+  }
+  return undefined;
+}
+
+function getFirstParam(params, names) {
+  for (const name of names) {
+    if (params.has(name)) {
+      return params.get(name);
+    }
+  }
+  return undefined;
+}
+
+function parseBooleanParam(params, names) {
+  const value = getFirstParam(params, names);
+  return value === undefined ? undefined : isTruthy(value);
+}
+
+function buildTls({ serverName, insecure, alpn, fingerprint } = {}) {
   const tls = {
     enabled: true,
   };
@@ -468,6 +511,12 @@ function buildTls({ serverName, insecure, alpn } = {}) {
   }
   if (alpn) {
     tls.alpn = splitCsv(alpn);
+  }
+  if (fingerprint) {
+    tls.utls = {
+      enabled: true,
+      fingerprint,
+    };
   }
   return tls;
 }
