@@ -38,6 +38,7 @@ document.querySelector('#addManualOutboundButton').addEventListener('click', () 
   state.manualOutbounds.push({
     id: createId(),
     enabled: true,
+    direct: false,
     outbound: {
       type: '',
       tag: '',
@@ -199,7 +200,8 @@ async function previewSources() {
       lines.push('', 'Manual outbounds:');
       for (const outbound of result.manualOutbounds) {
         const stateText = outbound.enabled ? `${outbound.type || '-'} ${outbound.tag || '-'}` : 'disabled';
-        lines.push(`${stateText}${outbound.detour ? ` detour=${outbound.detour}` : ''}${outbound.error ? `, ${outbound.error}` : ''}`);
+        const modeText = outbound.direct ? ' direct' : outbound.detour ? ` detour=${outbound.detour}` : '';
+        lines.push(`${stateText}${modeText}${outbound.error ? `, ${outbound.error}` : ''}`);
       }
     }
     if (result.warnings.length) {
@@ -330,6 +332,10 @@ function renderManualOutbounds() {
           <input data-field="enabled" type="checkbox">
           启用
         </label>
+        <label class="toggle">
+          <input data-field="direct" type="checkbox">
+          直连
+        </label>
         <button class="secondary remove-button" type="button">删除</button>
       </div>
       <label>
@@ -338,6 +344,7 @@ function renderManualOutbounds() {
       </label>
     `;
     row.querySelector('[data-field="enabled"]').checked = item.enabled !== false;
+    row.querySelector('[data-field="direct"]').checked = item.direct === true;
     row.querySelector('[data-field="outbound"]').value = JSON.stringify(outbound, null, 2);
     row.querySelector('.remove-button').addEventListener('click', () => {
       readSourcesFromDom();
@@ -423,6 +430,7 @@ function readManualOutboundsFromDom(skipId = '') {
     manualOutbounds.push({
       id: row.dataset.id,
       enabled: row.querySelector('[data-field="enabled"]').checked,
+      direct: row.querySelector('[data-field="direct"]').checked,
       outbound: normalizeManualOutboundForSave(outbound),
     });
   }

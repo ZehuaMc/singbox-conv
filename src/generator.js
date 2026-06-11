@@ -105,9 +105,10 @@ export async function previewSources(sources, manualOutbounds = []) {
     manualPreviews.push({
       id: item.id,
       enabled: item.enabled !== false,
+      direct: item.direct === true,
       tag: validation.ok ? validation.outbound.tag : '',
       type: validation.ok ? validation.outbound.type : '',
-      detour: validation.ok ? buildManualDetourTag(validation.outbound.tag) : '',
+      detour: validation.ok && item.direct !== true ? buildManualDetourTag(validation.outbound.tag) : '',
       error: validation.ok ? '' : validation.error,
     });
   }
@@ -127,6 +128,8 @@ async function buildOutbounds(sources, manualOutbounds, template) {
   ]);
   const regionBuckets = new Map(REGION_GROUPS.map((region) => [region.label, []]));
   const manualOutboundTags = [];
+  const directManualOutboundTags = [];
+  const directManualOutbounds = [];
   const manualDetourLinks = [];
   const sourceStats = [];
   const manualOutboundStats = [];
@@ -217,15 +220,22 @@ async function buildOutbounds(sources, manualOutbounds, template) {
     if (!manualTagRenames.has(originalTag)) {
       manualTagRenames.set(originalTag, tag);
     }
-    const detourTag = uniqueTag(buildManualDetourTag(tag), usedTags);
+    const direct = item.direct === true;
+    const detourTag = direct ? '' : uniqueTag(buildManualDetourTag(tag), usedTags);
     next.tag = tag;
     proxyOutbounds.push(next);
-    manualDetourLinks.push({ outbound: next, detourTag });
+    if (direct) {
+      directManualOutboundTags.push(tag);
+      directManualOutbounds.push(next);
+    } else {
+      manualDetourLinks.push({ outbound: next, detourTag });
+    }
     manualOutboundTags.push(tag);
     totalManualOutbounds += 1;
     manualOutboundStats.push({
       id: item.id,
       status: 'ok',
+      direct,
       type: next.type,
       originalTag,
       tag,
@@ -235,6 +245,9 @@ async function buildOutbounds(sources, manualOutbounds, template) {
   }
 
   rewriteManualDetours(proxyOutbounds, manualTagRenames);
+  for (const outbound of directManualOutbounds) {
+    delete outbound.detour;
+  }
   for (const { outbound, detourTag } of manualDetourLinks) {
     outbound.detour = detourTag;
   }
@@ -254,7 +267,7 @@ async function buildOutbounds(sources, manualOutbounds, template) {
   }
 
   const manualFallback = [...regionSelectorTags, ...manualOutboundTags];
-  const manualDetourOutbounds = buildManualDetourOutbounds(regionSelectorTags);
+  const manualDetourOutbounds = buildManualDetourOutbounds(regionSelectorTags, directManualOutboundTags);
   const manualDetourSelectors = manualDetourLinks.map(({ detourTag }) => ({
     type: 'selector',
     tag: detourTag,
@@ -433,8 +446,8 @@ export function buildCompatOutbounds(regionSelectorTags, manualOutboundTags = []
   return [...new Set([MANUAL_TAG, ...manualOutboundTags, ...regionSelectorTags])];
 }
 
-function buildManualDetourOutbounds(regionSelectorTags) {
-  return [...new Set([...regionSelectorTags, DIRECT_TAG])];
+function buildManualDetourOutbounds(regionSelectorTags, directManualOutboundTags = []) {
+  return [...new Set([...regionSelectorTags, ...directManualOutboundTags, DIRECT_TAG])];
 }
 
 function buildManualDetourTag(tag) {

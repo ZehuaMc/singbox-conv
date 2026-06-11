@@ -57,6 +57,7 @@ test('writes and reads settings with manual outbounds', async (t) => {
       {
         id: 'manual-a',
         enabled: true,
+        direct: true,
         region: '韩国',
         outbound: {
           type: 'socks',
@@ -72,6 +73,7 @@ test('writes and reads settings with manual outbounds', async (t) => {
 
   assert.equal(settings.sources[0].enabled, false);
   assert.equal(settings.manualOutbounds.length, 1);
+  assert.equal(settings.manualOutbounds[0].direct, true);
   assert.equal(settings.manualOutbounds[0].outbound.tag, '韩国手动');
   assert.equal(settings.manualOutbounds[0].outbound.detour, undefined);
 });

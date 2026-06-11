@@ -23,6 +23,8 @@ test('front-end exposes manual outbound controls', async () => {
   assert.match(html, /id="manualOutboundsList"/);
   assert.doesNotMatch(html, /id="detourOptions"/);
   assert.doesNotMatch(js, /data-field="detour"/);
+  assert.match(js, /data-field="direct"/);
+  assert.match(html, /直连手动出站/);
   assert.doesNotMatch(js, /detourOptionValues/);
   assert.doesNotMatch(js, /setupDetourCombobox/);
   assert.doesNotMatch(js, /openDetourMenu/);
@@ -130,6 +132,7 @@ test('server writes detailed runtime log context', async () => {
   assert.match(server, /createRequestContext/);
   assert.match(server, /logRequestFinished/);
   assert.match(server, /summarizeSources/);
+  assert.match(server, /direct: item\.direct === true/);
   assert.match(server, /warnings: result\.warnings\.slice\(0, 10\)/);
   assert.match(logs, /function normalizeError/);
   assert.match(logs, /MAX_STACK_LINES/);

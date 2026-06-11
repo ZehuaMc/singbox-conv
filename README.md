@@ -216,7 +216,7 @@ curl 'http://localhost:3000/sub/<token>/config.json'
 - 美国
 - 其他
 
-手动出站需要填写完整的 sing-box outbound JSON，并至少包含 `type` 和 `tag`。启用的手动出站会直接加入 `🚀 手动选择` 的候选，和香港、日本等总选择器同层。生成配置时，每个手动出站都会自动生成一个独立 selector，标签格式为 `🧭 手动出站名 Detour`，并把该手动出站的 `detour` 指向它；在 sing-box 配置里通过这个 selector 选择香港、日本、亚太、美国、其他或 `direct-out`，网页不再单独选择 Detour。
+手动出站需要填写完整的 sing-box outbound JSON，并至少包含 `type` 和 `tag`。启用的手动出站会直接加入 `🚀 手动选择` 的候选，和香港、日本等总选择器同层。默认生成配置时，每个手动出站都会自动生成一个独立 selector，标签格式为 `🧭 手动出站名 Detour`，并把该手动出站的 `detour` 指向它；在 sing-box 配置里通过这个 selector 选择香港、日本、亚太、美国、其他或 `direct-out`。如果在网页勾选“直连”，该手动出站不会生成或使用自己的 Detour selector，并且会作为其他手动出站 Detour selector 的候选节点。
 
 模板中 `dns`、`route` 和 `experimental` 引用的标签会继续保留为可选选择器，包括 `🚀 手动选择`、`🏠 家宽`、`📠 电报`、`🚨 Block` 和 `🔦 Google`。
 

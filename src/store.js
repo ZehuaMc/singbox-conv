@@ -81,6 +81,7 @@ function normalizePersistedManualOutbounds(manualOutbounds) {
       return {
         id: String(item.id || ''),
         enabled: item.enabled !== false,
+        direct: item.direct === true,
         outbound,
       };
     })

@@ -93,6 +93,7 @@ test('adds manual outbounds beside global region selectors', async (t) => {
     {
       id: 'manual-custom',
       enabled: true,
+      direct: true,
       outbound: {
         type: 'socks',
         tag: '家宽落地',
@@ -115,10 +116,11 @@ test('adds manual outbounds beside global region selectors', async (t) => {
   const manualHkDetourSelector = outbounds.find((item) => item.tag === '🧭 手动香港 Detour');
   const manualCustomDetourSelector = outbounds.find((item) => item.tag === '🧭 家宽落地 Detour');
   const compatSelector = outbounds.find((item) => item.tag === '🏠 家宽');
+  const manualCustomStats = result.stats.manualOutbounds.find((item) => item.id === 'manual-custom');
 
   assert.deepEqual(manualSelector.outbounds, ['香港', '日本', '亚太', '美国', '其他', '手动香港', '家宽落地']);
-  assert.deepEqual(manualHkDetourSelector.outbounds, ['香港', '日本', '亚太', '美国', '其他', 'direct-out']);
-  assert.deepEqual(manualCustomDetourSelector.outbounds, ['香港', '日本', '亚太', '美国', '其他', 'direct-out']);
+  assert.deepEqual(manualHkDetourSelector.outbounds, ['香港', '日本', '亚太', '美国', '其他', '家宽落地', 'direct-out']);
+  assert.equal(manualCustomDetourSelector, undefined);
   assert.deepEqual(hkSelector.outbounds, ['机场A / 香港']);
   assert.deepEqual(usSelector.outbounds, ['机场A / 美国']);
   assert.deepEqual(otherSelector.outbounds, ['机场A / 其他']);
@@ -127,7 +129,9 @@ test('adds manual outbounds beside global region selectors', async (t) => {
   assert.ok(sourceOtherSelector.outbounds.some((tag) => tag.includes('火星01')));
   assert.deepEqual(compatSelector.outbounds, ['🚀 手动选择', '手动香港', '家宽落地', '香港', '日本', '亚太', '美国', '其他']);
   assert.equal(manualHk.detour, '🧭 手动香港 Detour');
-  assert.equal(manualCustom.detour, '🧭 家宽落地 Detour');
+  assert.equal(manualCustom.detour, undefined);
+  assert.equal(manualCustomStats.direct, true);
+  assert.equal(manualCustomStats.detour, '');
   assert.equal(result.stats.manualOutboundCount, 2);
 });
 

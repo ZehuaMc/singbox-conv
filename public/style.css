@@ -202,7 +202,7 @@ button.secondary:hover {
 
 .manual-row-head {
   display: grid;
-  grid-template-columns: 84px 72px;
+  grid-template-columns: 84px 84px 72px;
   align-items: end;
 }
 

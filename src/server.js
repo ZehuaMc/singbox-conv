@@ -349,6 +349,7 @@ async function buildPreview(sources, manualOutbounds, requestContext) {
       manualOutbounds: preview.manualOutbounds.map((item) => ({
         id: item.id,
         enabled: item.enabled,
+        direct: item.direct === true,
         type: item.type,
         tag: item.tag,
         detour: item.detour,
@@ -422,6 +423,7 @@ function normalizeManualOutbounds(manualOutbounds) {
     return {
       id: item.id ? String(item.id) : crypto.randomUUID(),
       enabled: item.enabled !== false,
+      direct: item.direct === true,
       outbound: normalizedOutbound,
     };
   });
@@ -668,6 +670,7 @@ function summarizeManualOutbounds(manualOutbounds) {
   return manualOutbounds.map((item) => ({
     id: item.id,
     enabled: item.enabled !== false,
+    direct: item.direct === true,
     type: item.outbound?.type || '',
     tag: item.outbound?.tag || '',
   }));
