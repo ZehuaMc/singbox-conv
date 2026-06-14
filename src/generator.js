@@ -418,7 +418,6 @@ function buildNodeFilterEmptyWarning(sourceName, filtered, originalNodeCount) {
 
 function buildSourceSelectors(sourceName, nodes, usedTags) {
   const result = [];
-  const regionSelectors = [];
 
   for (const region of REGION_GROUPS) {
     const regionNodes = nodes.filter((node) => classifyRegion(node.tag) === region.key);
@@ -426,7 +425,6 @@ function buildSourceSelectors(sourceName, nodes, usedTags) {
       continue;
     }
     const tag = uniqueTag(`${sourceName} / ${region.label}`, usedTags);
-    regionSelectors.push(tag);
     result.push({
       kind: 'region',
       regionLabel: region.label,
@@ -439,17 +437,6 @@ function buildSourceSelectors(sourceName, nodes, usedTags) {
     });
   }
 
-  const sourceTag = uniqueTag(sourceName, usedTags);
-  const outbounds = regionSelectors.length > 0 ? regionSelectors : nodes.map((node) => node.tag);
-  result.unshift({
-    kind: 'source',
-    selector: {
-      type: 'selector',
-      tag: sourceTag,
-      outbounds,
-      default: outbounds[0],
-    },
-  });
   return result;
 }
 

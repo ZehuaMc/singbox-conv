@@ -39,7 +39,7 @@ test('builds config by replacing only outbounds', async (t) => {
   assert.deepEqual(result.config.route, template.route);
   assert.deepEqual(result.config.dns, template.dns);
   assert.notDeepEqual(result.config.outbounds, template.outbounds);
-  assert.ok(result.config.outbounds.some((item) => item.tag === '机场A'));
+  assert.equal(result.config.outbounds.some((item) => item.tag === '机场A'), false);
   assert.ok(result.config.outbounds.some((item) => item.tag === '机场A / 香港'));
   assert.ok(result.config.outbounds.some((item) => item.tag === '机场A / 其他'));
   assert.ok(result.config.outbounds.some((item) => item.tag === '🚀 手动选择'));
