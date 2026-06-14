@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { buildCompatOutbounds, buildConfigFromSources } from '../src/generator.js';
+import { buildCompatOutbounds, buildConfigFromSources, previewSources } from '../src/generator.js';
 
 test('builds config by replacing only outbounds', async (t) => {
   const cacheDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sing-box-conv-build-cache-'));
@@ -41,18 +41,101 @@ test('builds config by replacing only outbounds', async (t) => {
   assert.notDeepEqual(result.config.outbounds, template.outbounds);
   assert.ok(result.config.outbounds.some((item) => item.tag === '机场A'));
   assert.ok(result.config.outbounds.some((item) => item.tag === '机场A / 香港'));
-  assert.ok(result.config.outbounds.some((item) => item.tag === '机场A / 美国'));
+  assert.ok(result.config.outbounds.some((item) => item.tag === '机场A / 其他'));
   assert.ok(result.config.outbounds.some((item) => item.tag === '🚀 手动选择'));
   assert.ok(result.config.outbounds.some((item) => item.tag === '🏠 家宽'));
-  assert.ok(result.config.outbounds.some((item) => item.tag === '香港'));
-  assert.ok(result.config.outbounds.some((item) => item.tag === '日本'));
-  assert.ok(result.config.outbounds.some((item) => item.tag === '亚太'));
-  assert.ok(result.config.outbounds.some((item) => item.tag === '美国'));
-  assert.ok(result.config.outbounds.some((item) => item.tag === '其他'));
+  for (const tag of ['香港', '日本', '亚太', '美国', '其他']) {
+    assert.equal(result.config.outbounds.some((item) => item.tag === tag), false);
+  }
   assert.equal(result.stats.nodeCount, 2);
 });
 
-test('adds manual outbounds beside global region selectors', async (t) => {
+test('filters subscription nodes with a source regex', async (t) => {
+  const cacheDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sing-box-conv-filter-cache-'));
+  const upstream = Buffer.from([
+    'ss://YWVzLTI1Ni1nY206cGFzcw@hk.example.com:8388#香港01',
+    'ss://YWVzLTI1Ni1nY206cGFzcw@jp.example.com:8388#日本01',
+    'ss://YWVzLTI1Ni1nY206cGFzcw@us.example.com:8388#美国01',
+  ].join('\n')).toString('base64');
+  const originalFetch = globalThis.fetch;
+  process.env.SUBSCRIPTION_CACHE_DIR = cacheDir;
+  globalThis.fetch = async () => new Response(upstream, { status: 200 });
+  t.after(async () => {
+    globalThis.fetch = originalFetch;
+    delete process.env.SUBSCRIPTION_CACHE_DIR;
+    await fs.rm(cacheDir, { recursive: true, force: true });
+  });
+
+  const source = {
+    id: 'a',
+    name: '机场A',
+    url: 'https://example.com/sub',
+    enabled: true,
+    filterPattern: '香港|日本',
+  };
+  const result = await buildConfigFromSources([source]);
+  const preview = await previewSources([source]);
+  const outbounds = result.config.outbounds;
+  const manualSelector = outbounds.find((item) => item.tag === '🚀 手动选择');
+
+  assert.equal(result.stats.nodeCount, 2);
+  assert.equal(result.stats.sources[0].filteredNodeCount, 1);
+  assert.equal(result.stats.sources[0].includeFilteredNodeCount, 1);
+  assert.equal(result.stats.sources[0].excludeFilteredNodeCount, 0);
+  assert.equal(preview.sources[0].nodes, 2);
+  assert.equal(preview.sources[0].filteredNodes, 1);
+  assert.equal(preview.sources[0].includeFilteredNodes, 1);
+  assert.equal(preview.sources[0].excludeFilteredNodes, 0);
+  assert.ok(outbounds.some((item) => item.tag.includes('香港01')));
+  assert.ok(outbounds.some((item) => item.tag.includes('日本01')));
+  assert.equal(outbounds.some((item) => item.tag.includes('美国01')), false);
+  assert.deepEqual(manualSelector.outbounds, ['机场A / 香港', '机场A / 日本']);
+});
+
+test('applies include regex before exclude regex', async (t) => {
+  const cacheDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sing-box-conv-exclude-filter-cache-'));
+  const upstream = Buffer.from([
+    'ss://YWVzLTI1Ni1nY206cGFzcw@hk.example.com:8388#香港01',
+    'ss://YWVzLTI1Ni1nY206cGFzcw@jp.example.com:8388#日本01',
+    'ss://YWVzLTI1Ni1nY206cGFzcw@us.example.com:8388#美国01',
+  ].join('\n')).toString('base64');
+  const originalFetch = globalThis.fetch;
+  process.env.SUBSCRIPTION_CACHE_DIR = cacheDir;
+  globalThis.fetch = async () => new Response(upstream, { status: 200 });
+  t.after(async () => {
+    globalThis.fetch = originalFetch;
+    delete process.env.SUBSCRIPTION_CACHE_DIR;
+    await fs.rm(cacheDir, { recursive: true, force: true });
+  });
+
+  const source = {
+    id: 'a',
+    name: '机场A',
+    url: 'https://example.com/sub',
+    enabled: true,
+    filterPattern: '香港|日本',
+    excludeFilterPattern: '日本',
+  };
+  const result = await buildConfigFromSources([source]);
+  const preview = await previewSources([source]);
+  const outbounds = result.config.outbounds;
+  const manualSelector = outbounds.find((item) => item.tag === '🚀 手动选择');
+
+  assert.equal(result.stats.nodeCount, 1);
+  assert.equal(result.stats.sources[0].filteredNodeCount, 2);
+  assert.equal(result.stats.sources[0].includeFilteredNodeCount, 1);
+  assert.equal(result.stats.sources[0].excludeFilteredNodeCount, 1);
+  assert.equal(preview.sources[0].nodes, 1);
+  assert.equal(preview.sources[0].filteredNodes, 2);
+  assert.equal(preview.sources[0].includeFilteredNodes, 1);
+  assert.equal(preview.sources[0].excludeFilteredNodes, 1);
+  assert.ok(outbounds.some((item) => item.tag.includes('香港01')));
+  assert.equal(outbounds.some((item) => item.tag.includes('日本01')), false);
+  assert.equal(outbounds.some((item) => item.tag.includes('美国01')), false);
+  assert.deepEqual(manualSelector.outbounds, ['机场A / 香港']);
+});
+
+test('adds manual outbounds beside subscription region selectors', async (t) => {
   const cacheDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sing-box-conv-manual-cache-'));
   const ss = 'ss://YWVzLTI1Ni1nY206cGFzcw@example.com:8388#香港01';
   const vmess = `vmess://${Buffer.from(JSON.stringify({
@@ -63,7 +146,8 @@ test('adds manual outbounds beside global region selectors', async (t) => {
     aid: '0',
   })).toString('base64')}`;
   const trojan = 'trojan://secret@other.example.com:443#火星01';
-  const upstream = Buffer.from(`${ss}\n${vmess}\n${trojan}`).toString('base64');
+  const apac = 'trojan://secret@sg.example.com:443#新加坡01';
+  const upstream = Buffer.from(`${ss}\n${vmess}\n${trojan}\n${apac}`).toString('base64');
   const originalFetch = globalThis.fetch;
   process.env.SUBSCRIPTION_CACHE_DIR = cacheDir;
   globalThis.fetch = async () => new Response(upstream, { status: 200 });
@@ -105,11 +189,7 @@ test('adds manual outbounds beside global region selectors', async (t) => {
 
   const outbounds = result.config.outbounds;
   const manualSelector = outbounds.find((item) => item.tag === '🚀 手动选择');
-  const hkSelector = outbounds.find((item) => item.tag === '香港');
-  const usSelector = outbounds.find((item) => item.tag === '美国');
-  const otherSelector = outbounds.find((item) => item.tag === '其他');
   const sourceHkSelector = outbounds.find((item) => item.tag === '机场A / 香港');
-  const sourceUsSelector = outbounds.find((item) => item.tag === '机场A / 美国');
   const sourceOtherSelector = outbounds.find((item) => item.tag === '机场A / 其他');
   const manualHk = outbounds.find((item) => item.tag === '手动香港');
   const manualCustom = outbounds.find((item) => item.tag === '家宽落地');
@@ -118,16 +198,17 @@ test('adds manual outbounds beside global region selectors', async (t) => {
   const compatSelector = outbounds.find((item) => item.tag === '🏠 家宽');
   const manualCustomStats = result.stats.manualOutbounds.find((item) => item.id === 'manual-custom');
 
-  assert.deepEqual(manualSelector.outbounds, ['香港', '日本', '亚太', '美国', '其他', '手动香港', '家宽落地']);
-  assert.deepEqual(manualHkDetourSelector.outbounds, ['香港', '日本', '亚太', '美国', '其他', '家宽落地', 'direct-out']);
+  assert.deepEqual(manualSelector.outbounds, ['机场A / 香港', '机场A / 其他', '手动香港', '家宽落地']);
+  assert.deepEqual(manualHkDetourSelector.outbounds, ['机场A / 香港', '机场A / 其他', '家宽落地', 'direct-out']);
   assert.equal(manualCustomDetourSelector, undefined);
-  assert.deepEqual(hkSelector.outbounds, ['机场A / 香港']);
-  assert.deepEqual(usSelector.outbounds, ['机场A / 美国']);
-  assert.deepEqual(otherSelector.outbounds, ['机场A / 其他']);
+  for (const tag of ['香港', '日本', '亚太', '美国', '其他']) {
+    assert.equal(outbounds.some((item) => item.tag === tag), false);
+  }
   assert.ok(sourceHkSelector.outbounds.some((tag) => tag.includes('香港01')));
-  assert.ok(sourceUsSelector.outbounds.some((tag) => tag.includes('美国01')));
+  assert.ok(sourceOtherSelector.outbounds.some((tag) => tag.includes('美国01')));
   assert.ok(sourceOtherSelector.outbounds.some((tag) => tag.includes('火星01')));
-  assert.deepEqual(compatSelector.outbounds, ['🚀 手动选择', '手动香港', '家宽落地', '香港', '日本', '亚太', '美国', '其他']);
+  assert.ok(sourceOtherSelector.outbounds.some((tag) => tag.includes('新加坡01')));
+  assert.deepEqual(compatSelector.outbounds, ['🚀 手动选择', '手动香港', '家宽落地', '机场A / 香港', '机场A / 其他']);
   assert.equal(manualHk.detour, '🧭 手动香港 Detour');
   assert.equal(manualCustom.detour, undefined);
   assert.equal(manualCustomStats.direct, true);
@@ -135,7 +216,7 @@ test('adds manual outbounds beside global region selectors', async (t) => {
   assert.equal(result.stats.manualOutboundCount, 2);
 });
 
-test('groups global regions by subscription region selectors', async (t) => {
+test('uses subscription region selectors directly across sources', async (t) => {
   const cacheDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sing-box-conv-region-cache-'));
   const sourceA = Buffer.from([
     'ss://YWVzLTI1Ni1nY206cGFzcw@a-us.example.com:8388#美国A01',
@@ -170,21 +251,25 @@ test('groups global regions by subscription region selectors', async (t) => {
   ]);
 
   const outbounds = result.config.outbounds;
-  const usSelector = outbounds.find((item) => item.tag === '美国');
-  const jpSelector = outbounds.find((item) => item.tag === '日本');
-  const sourceAUsSelector = outbounds.find((item) => item.tag === '机场A / 美国');
-  const sourceBUsSelector = outbounds.find((item) => item.tag === '机场B / 美国');
+  const manualSelector = outbounds.find((item) => item.tag === '🚀 手动选择');
+  const sourceAOtherSelector = outbounds.find((item) => item.tag === '机场A / 其他');
+  const sourceAJpSelector = outbounds.find((item) => item.tag === '机场A / 日本');
+  const sourceBOtherSelector = outbounds.find((item) => item.tag === '机场B / 其他');
+  const sourceBJpSelector = outbounds.find((item) => item.tag === '机场B / 日本');
 
-  assert.deepEqual(usSelector.outbounds, ['机场A / 美国', '机场B / 美国']);
-  assert.deepEqual(jpSelector.outbounds, ['机场A / 日本', '机场B / 日本']);
-  assert.ok(sourceAUsSelector.outbounds.some((tag) => tag.includes('美国A01')));
-  assert.ok(sourceBUsSelector.outbounds.some((tag) => tag.includes('美国B01')));
-  assert.equal(usSelector.outbounds.some((tag) => tag.includes('美国A01')), false);
-  assert.equal(usSelector.outbounds.some((tag) => tag.includes('美国B01')), false);
+  assert.deepEqual(manualSelector.outbounds, ['机场A / 日本', '机场A / 其他', '机场B / 日本', '机场B / 其他']);
+  assert.ok(sourceAOtherSelector.outbounds.some((tag) => tag.includes('美国A01')));
+  assert.ok(sourceAJpSelector.outbounds.some((tag) => tag.includes('日本A01')));
+  assert.ok(sourceBOtherSelector.outbounds.some((tag) => tag.includes('美国B01')));
+  assert.ok(sourceBJpSelector.outbounds.some((tag) => tag.includes('日本B01')));
+  assert.equal(outbounds.some((item) => item.tag === '机场A / 美国'), false);
+  assert.equal(outbounds.some((item) => item.tag === '机场B / 美国'), false);
+  assert.equal(outbounds.some((item) => item.tag === '美国'), false);
+  assert.equal(outbounds.some((item) => item.tag === '日本'), false);
 });
 
-test('builds all compatibility selectors with every region choice', () => {
-  const regionTags = ['香港', '日本', '亚太', '美国', '其他'];
+test('builds all compatibility selectors with every subscription region choice', () => {
+  const regionTags = ['机场A / 香港', '机场A / 日本'];
 
   assert.deepEqual(buildCompatOutbounds(regionTags), ['🚀 手动选择', ...regionTags]);
   assert.deepEqual(buildCompatOutbounds(regionTags, ['手动香港']), ['🚀 手动选择', '手动香港', ...regionTags]);

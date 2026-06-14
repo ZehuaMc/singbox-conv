@@ -51,6 +51,8 @@ test('writes and reads settings with manual outbounds', async (t) => {
         name: '机场A',
         url: 'https://example.com/sub',
         enabled: false,
+        filterPattern: '香港|日本',
+        excludeFilterPattern: '倍率|过期',
       },
     ],
     manualOutbounds: [
@@ -72,8 +74,42 @@ test('writes and reads settings with manual outbounds', async (t) => {
   const settings = await readSettings();
 
   assert.equal(settings.sources[0].enabled, false);
+  assert.equal(settings.sources[0].filterPattern, '香港|日本');
+  assert.equal(settings.sources[0].excludeFilterPattern, '倍率|过期');
   assert.equal(settings.manualOutbounds.length, 1);
   assert.equal(settings.manualOutbounds[0].direct, true);
   assert.equal(settings.manualOutbounds[0].outbound.tag, '韩国手动');
   assert.equal(settings.manualOutbounds[0].outbound.detour, undefined);
+});
+
+test('migrates legacy exclude filter mode to exclude regex', async (t) => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'sing-box-conv-store-filter-legacy-'));
+  const file = path.join(dir, 'sources.json');
+  process.env.SOURCES_PATH = file;
+  const moduleTag = Date.now();
+  const { readSettings } = await import(new URL(`../src/store.js?filter-legacy-${moduleTag}`, import.meta.url));
+
+  t.after(async () => {
+    delete process.env.SOURCES_PATH;
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  await fs.writeFile(file, `${JSON.stringify({
+    sources: [
+      {
+        id: 'a',
+        name: '机场A',
+        url: 'https://example.com/sub',
+        enabled: true,
+        filterPattern: '倍率|过期',
+        filterMode: 'exclude',
+      },
+    ],
+    manualOutbounds: [],
+  })}\n`);
+
+  const settings = await readSettings();
+
+  assert.equal(settings.sources[0].filterPattern, '');
+  assert.equal(settings.sources[0].excludeFilterPattern, '倍率|过期');
 });

@@ -12,7 +12,11 @@ import {
   ensureDataDir,
   getSubscriptionToken,
 } from './config.js';
-import { buildConfigFromSources, previewSources } from './generator.js';
+import {
+  buildConfigFromSources,
+  compileNodeFilterRegex,
+  previewSources,
+} from './generator.js';
 import { appendLog, clearLogs, readLogs } from './logs.js';
 import { readSettings, writeSettings } from './store.js';
 import { readTemplateText, writeTemplateText } from './template.js';
@@ -343,6 +347,9 @@ async function buildPreview(sources, manualOutbounds, requestContext) {
         name: source.name,
         enabled: source.enabled,
         nodeCount: source.nodes,
+        filteredNodeCount: source.filteredNodes || 0,
+        includeFilteredNodeCount: source.includeFilteredNodes || 0,
+        excludeFilteredNodeCount: source.excludeFilteredNodes || 0,
         status: source.error ? 'error' : 'ok',
         error: source.error || '',
       })),
@@ -385,13 +392,39 @@ function normalizeSources(sources) {
     if (!/^https?:\/\//i.test(url)) {
       throw new HttpError(400, `source #${index + 1} must use http(s) URL`);
     }
+    const { filterPattern, excludeFilterPattern } = normalizeSourceFilterFields(source);
+    for (const [label, pattern] of [
+      ['include filter regex', filterPattern],
+      ['exclude filter regex', excludeFilterPattern],
+    ]) {
+      if (!pattern) {
+        continue;
+      }
+      try {
+        compileNodeFilterRegex(pattern);
+      } catch (error) {
+        throw new HttpError(400, `source #${index + 1} invalid ${label}: ${error.message}`);
+      }
+    }
     return {
       id: source.id ? String(source.id) : crypto.randomUUID(),
       name,
       url,
       enabled: source.enabled !== false,
+      filterPattern,
+      excludeFilterPattern,
     };
   });
+}
+
+function normalizeSourceFilterFields(source) {
+  let filterPattern = String(source.filterPattern || '').trim();
+  let excludeFilterPattern = String(source.excludeFilterPattern || '').trim();
+  if (source.filterMode === 'exclude' && filterPattern && !excludeFilterPattern) {
+    excludeFilterPattern = filterPattern;
+    filterPattern = '';
+  }
+  return { filterPattern, excludeFilterPattern };
 }
 
 function normalizeManualOutbounds(manualOutbounds) {
@@ -661,6 +694,8 @@ function summarizeSources(sources) {
     id: source.id,
     name: source.name,
     enabled: source.enabled !== false,
+    hasFilter: Boolean(source.filterPattern),
+    hasExcludeFilter: Boolean(source.excludeFilterPattern),
     urlProtocol: getUrlProtocol(source.url),
     urlHost: getUrlHost(source.url),
   }));

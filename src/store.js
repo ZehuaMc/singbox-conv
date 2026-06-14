@@ -60,13 +60,28 @@ function normalizePersistedSources(sources) {
   }
   return sources
     .filter((source) => source && typeof source === 'object')
-    .map((source) => ({
-      id: String(source.id || ''),
-      name: String(source.name || ''),
-      url: String(source.url || ''),
-      enabled: source.enabled !== false,
-    }))
+    .map((source) => {
+      const { filterPattern, excludeFilterPattern } = normalizePersistedSourceFilters(source);
+      return {
+        id: String(source.id || ''),
+        name: String(source.name || ''),
+        url: String(source.url || ''),
+        enabled: source.enabled !== false,
+        filterPattern,
+        excludeFilterPattern,
+      };
+    })
     .filter((source) => source.id && source.name && source.url);
+}
+
+function normalizePersistedSourceFilters(source) {
+  let filterPattern = String(source.filterPattern || '').trim();
+  let excludeFilterPattern = String(source.excludeFilterPattern || '').trim();
+  if (source.filterMode === 'exclude' && filterPattern && !excludeFilterPattern) {
+    excludeFilterPattern = filterPattern;
+    filterPattern = '';
+  }
+  return { filterPattern, excludeFilterPattern };
 }
 
 function normalizePersistedManualOutbounds(manualOutbounds) {

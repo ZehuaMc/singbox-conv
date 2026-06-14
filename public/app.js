@@ -27,6 +27,8 @@ document.querySelector('#addSourceButton').addEventListener('click', () => {
     name: '',
     url: '',
     enabled: true,
+    filterPattern: '',
+    excludeFilterPattern: '',
   });
   renderSources();
 });
@@ -194,7 +196,10 @@ async function previewSources() {
     });
     const lines = result.sources.map((source) => {
       const stateText = source.enabled ? `${source.nodes} nodes` : 'disabled';
-      return `${source.name}: ${stateText}${source.error ? `, ${source.error}` : ''}`;
+      const filterText = source.filteredNodes
+        ? `, 移除 ${source.filteredNodes}（保留阶段 ${source.includeFilteredNodes || 0}，移除阶段 ${source.excludeFilteredNodes || 0}）`
+        : '';
+      return `${source.name}: ${stateText}${filterText}${source.error ? `, ${source.error}` : ''}`;
     });
     if (result.manualOutbounds?.length) {
       lines.push('', 'Manual outbounds:');
@@ -262,27 +267,42 @@ function renderSources() {
     row.className = 'source-row';
     row.dataset.id = source.id;
     row.innerHTML = `
-      <label class="toggle">
-        <input data-field="enabled" type="checkbox">
-        启用
-      </label>
-      <label>
+      <div class="source-enabled">
+        <label class="toggle">
+          <input data-field="enabled" type="checkbox">
+          启用
+        </label>
+      </div>
+      <label class="source-name">
         名称
         <input data-field="name" placeholder="机场 A">
       </label>
-      <label>
+      <label class="source-url">
         订阅 URL
         <input data-field="url" placeholder="https://example.com/sub">
       </label>
-      <div class="source-order" aria-label="调整顺序">
-        <button class="secondary order-button move-up-button" type="button" title="上移" aria-label="上移">↑</button>
-        <button class="secondary order-button move-down-button" type="button" title="下移" aria-label="下移">↓</button>
+      <label class="source-include-filter">
+        保留匹配正则
+        <input data-field="filterPattern" placeholder="香港|日本">
+      </label>
+      <label class="source-exclude-filter">
+        移除匹配正则
+        <input data-field="excludeFilterPattern" placeholder="倍率|过期|官网">
+      </label>
+      <div class="source-actions">
+        <div class="source-order" aria-label="调整顺序">
+          <button class="secondary order-button move-up-button" type="button" title="上移" aria-label="上移">↑</button>
+          <button class="secondary order-button move-down-button" type="button" title="下移" aria-label="下移">↓</button>
+        </div>
+        <button class="secondary remove-button" type="button">删除</button>
       </div>
-      <button class="secondary remove-button" type="button">删除</button>
     `;
     row.querySelector('[data-field="enabled"]').checked = source.enabled !== false;
     row.querySelector('[data-field="name"]').value = source.name;
     row.querySelector('[data-field="url"]').value = source.url;
+    const filters = normalizeSourceFilters(source);
+    row.querySelector('[data-field="filterPattern"]').value = filters.filterPattern;
+    row.querySelector('[data-field="excludeFilterPattern"]').value = filters.excludeFilterPattern;
     const moveUpButton = row.querySelector('.move-up-button');
     const moveDownButton = row.querySelector('.move-down-button');
     moveUpButton.disabled = index === 0;
@@ -410,7 +430,19 @@ function readSourcesFromDom() {
     enabled: row.querySelector('[data-field="enabled"]').checked,
     name: row.querySelector('[data-field="name"]').value.trim(),
     url: row.querySelector('[data-field="url"]').value.trim(),
+    filterPattern: row.querySelector('[data-field="filterPattern"]').value.trim(),
+    excludeFilterPattern: row.querySelector('[data-field="excludeFilterPattern"]').value.trim(),
   }));
+}
+
+function normalizeSourceFilters(source) {
+  let filterPattern = source.filterPattern || '';
+  let excludeFilterPattern = source.excludeFilterPattern || '';
+  if (source.filterMode === 'exclude' && filterPattern && !excludeFilterPattern) {
+    excludeFilterPattern = filterPattern;
+    filterPattern = '';
+  }
+  return { filterPattern, excludeFilterPattern };
 }
 
 function readManualOutboundsFromDom(skipId = '') {

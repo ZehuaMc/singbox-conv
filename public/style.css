@@ -183,12 +183,43 @@ button.secondary:hover {
 
 .source-row {
   display: grid;
-  grid-template-columns: 84px minmax(130px, 180px) minmax(200px, 1fr) 86px 72px;
+  grid-template-columns: 84px minmax(150px, 210px) minmax(220px, 1fr) minmax(220px, 1fr) auto;
+  grid-template-areas:
+    "enabled name url url actions"
+    ". include include exclude actions";
   align-items: end;
+  gap: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 12px;
   background: #fbfcfe;
+}
+
+.source-enabled {
+  grid-area: enabled;
+}
+
+.source-name {
+  grid-area: name;
+}
+
+.source-url {
+  grid-area: url;
+}
+
+.source-include-filter {
+  grid-area: include;
+}
+
+.source-exclude-filter {
+  grid-area: exclude;
+}
+
+.source-actions {
+  grid-area: actions;
+  display: flex;
+  align-items: end;
+  gap: 8px;
 }
 
 .manual-row {
@@ -328,6 +359,17 @@ button.secondary:disabled:hover {
   color: var(--danger);
 }
 
+@media (max-width: 960px) {
+  .source-row {
+    grid-template-columns: 84px minmax(150px, 1fr) auto;
+    grid-template-areas:
+      "enabled name actions"
+      "url url url"
+      "include include include"
+      "exclude exclude exclude";
+  }
+}
+
 @media (max-width: 760px) {
   .app {
     width: min(100vw - 20px, 1080px);
@@ -347,6 +389,18 @@ button.secondary:disabled:hover {
 
   .source-row {
     grid-template-columns: 1fr;
+    grid-template-areas:
+      "enabled"
+      "name"
+      "url"
+      "include"
+      "exclude"
+      "actions";
+  }
+
+  .source-actions {
+    align-items: center;
+    justify-content: space-between;
   }
 
   .manual-row-head {

@@ -125,50 +125,6 @@
       "type": "selector",
       "tag": "🚀 手动选择",
       "outbounds": [
-        "香港",
-        "日本",
-        "亚太",
-        "美国",
-        "其他"
-      ],
-      "default": "香港"
-    },
-    {
-      "type": "selector",
-      "tag": "香港",
-      "outbounds": [
-        "direct-out"
-      ],
-      "default": "direct-out"
-    },
-    {
-      "type": "selector",
-      "tag": "日本",
-      "outbounds": [
-        "direct-out"
-      ],
-      "default": "direct-out"
-    },
-    {
-      "type": "selector",
-      "tag": "亚太",
-      "outbounds": [
-        "direct-out"
-      ],
-      "default": "direct-out"
-    },
-    {
-      "type": "selector",
-      "tag": "美国",
-      "outbounds": [
-        "direct-out"
-      ],
-      "default": "direct-out"
-    },
-    {
-      "type": "selector",
-      "tag": "其他",
-      "outbounds": [
         "direct-out"
       ],
       "default": "direct-out"
@@ -178,11 +134,7 @@
       "tag": "🏠 家宽",
       "outbounds": [
         "🚀 手动选择",
-        "香港",
-        "日本",
-        "亚太",
-        "美国",
-        "其他"
+        "direct-out"
       ],
       "default": "🚀 手动选择"
     },
@@ -191,11 +143,7 @@
       "tag": "📠 电报",
       "outbounds": [
         "🚀 手动选择",
-        "香港",
-        "日本",
-        "亚太",
-        "美国",
-        "其他"
+        "direct-out"
       ],
       "default": "🚀 手动选择"
     },
@@ -204,11 +152,7 @@
       "tag": "🚨 Block",
       "outbounds": [
         "🚀 手动选择",
-        "香港",
-        "日本",
-        "亚太",
-        "美国",
-        "其他"
+        "direct-out"
       ],
       "default": "🚀 手动选择"
     },
@@ -217,11 +161,7 @@
       "tag": "🔦 Google",
       "outbounds": [
         "🚀 手动选择",
-        "香港",
-        "日本",
-        "亚太",
-        "美国",
-        "其他"
+        "direct-out"
       ],
       "default": "🚀 手动选择"
     }

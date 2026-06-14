@@ -48,6 +48,30 @@ test('front-end supports reordering upstream sources', async () => {
   assert.match(css, /\.source-order/);
 });
 
+test('front-end and server expose source regex filters', async () => {
+  const js = await fs.readFile(new URL('../public/app.js', import.meta.url), 'utf8');
+  const css = await fs.readFile(new URL('../public/style.css', import.meta.url), 'utf8');
+  const server = await fs.readFile(new URL('../src/server.js', import.meta.url), 'utf8');
+  const store = await fs.readFile(new URL('../src/store.js', import.meta.url), 'utf8');
+
+  assert.match(js, /data-field="filterPattern"/);
+  assert.match(js, /data-field="excludeFilterPattern"/);
+  assert.match(js, /保留匹配正则/);
+  assert.match(js, /移除匹配正则/);
+  assert.doesNotMatch(js, /data-field="filterMode"/);
+  assert.match(js, /filteredNodes/);
+  assert.match(js, /保留阶段/);
+  assert.match(css, /grid-template-areas/);
+  assert.match(css, /source-include-filter/);
+  assert.match(css, /source-exclude-filter/);
+  assert.match(css, /@media \(max-width: 960px\)/);
+  assert.match(server, /filterPattern/);
+  assert.match(server, /excludeFilterPattern/);
+  assert.match(server, /compileNodeFilterRegex/);
+  assert.match(store, /filterPattern/);
+  assert.match(store, /excludeFilterPattern/);
+});
+
 test('preview supports unsaved form data', async () => {
   const server = await fs.readFile(new URL('../src/server.js', import.meta.url), 'utf8');
   const js = await fs.readFile(new URL('../public/app.js', import.meta.url), 'utf8');

@@ -15,16 +15,6 @@ const REGION_GROUPS = [
     pattern: /(日本|日|jp|japan|tokyo|osaka)/i,
   },
   {
-    key: 'apac',
-    label: '亚太',
-    pattern: /(台湾|台灣|新加坡|韩国|韓国|南韩|越南|泰国|马来|菲律宾|澳大利亚|澳洲|印尼|印度|tw|taiwan|sg|singapore|kr|korea|vn|vietnam|th|thai|my|malaysia|ph|philippines|au|australia|id|indonesia|in|india)/i,
-  },
-  {
-    key: 'us',
-    label: '美国',
-    pattern: /(美国|美國|美|us|usa|united\s*states|america|los\s*angeles|san\s*jose|new\s*york|seattle|dallas)/i,
-  },
-  {
     key: 'other',
     label: '其他',
     pattern: null,
@@ -65,12 +55,16 @@ export async function previewSources(sources, manualOutbounds = []) {
       const { text, warnings: fetchWarnings } = await fetchSubscriptionText(source);
       warnings.push(...fetchWarnings);
       const parsed = parseSubscriptionText(text, source.name);
+      const filtered = applyNodeFilter(parsed.outbounds, source);
       previews.push({
         id: source.id,
         name: source.name,
         url: source.url,
         enabled: true,
-        nodes: parsed.outbounds.length,
+        nodes: filtered.outbounds.length,
+        filteredNodes: filtered.filteredCount,
+        includeFilteredNodes: filtered.includeFilteredCount,
+        excludeFilteredNodes: filtered.excludeFilteredCount,
       });
       warnings.push(...parsed.warnings);
     } catch (error) {
@@ -93,6 +87,9 @@ export async function previewSources(sources, manualOutbounds = []) {
       url: source.url,
       enabled: false,
       nodes: 0,
+      filteredNodes: 0,
+      includeFilteredNodes: 0,
+      excludeFilteredNodes: 0,
     });
   }
 
@@ -126,7 +123,6 @@ async function buildOutbounds(sources, manualOutbounds, template) {
     ...FIXED_REGION_LABELS,
     ...COMPAT_SELECTOR_TAGS,
   ]);
-  const regionBuckets = new Map(REGION_GROUPS.map((region) => [region.label, []]));
   const manualOutboundTags = [];
   const directManualOutboundTags = [];
   const directManualOutbounds = [];
@@ -144,19 +140,24 @@ async function buildOutbounds(sources, manualOutbounds, template) {
       const parsed = parseSubscriptionText(text, source.name);
       warnings.push(...parsed.warnings);
 
-      const sourceNodes = parsed.outbounds.map((outbound) => {
+      const filtered = applyNodeFilter(parsed.outbounds, source);
+      const sourceNodes = filtered.outbounds.map((outbound) => {
         const next = structuredClone(outbound);
         next.tag = uniqueTag(`${source.name} / ${next.tag || next.server || next.type}`, usedTags);
         return next;
       });
 
       if (sourceNodes.length === 0) {
-        warnings.push(`${source.name}: no usable nodes`);
+        const emptyWarning = buildNodeFilterEmptyWarning(source.name, filtered, parsed.outbounds.length);
+        warnings.push(emptyWarning);
         sourceStats.push({
           id: source.id,
           name: source.name,
           status: 'empty',
           nodeCount: 0,
+          filteredNodeCount: filtered.filteredCount,
+          includeFilteredNodeCount: filtered.includeFilteredCount,
+          excludeFilteredNodeCount: filtered.excludeFilteredCount,
           warningCount: fetchWarnings.length + parsed.warnings.length + 1,
           textBytes: Buffer.byteLength(text, 'utf8'),
           cacheUsed: fetchWarnings.some((warning) => warning.includes('using cached subscription')),
@@ -169,12 +170,14 @@ async function buildOutbounds(sources, manualOutbounds, template) {
       proxyOutbounds.push(...sourceNodes);
       const sourceSelectors = buildSourceSelectors(source.name, sourceNodes, usedTags);
       sourceGroups.push(...sourceSelectors);
-      addSourceRegionsToBuckets(regionBuckets, sourceSelectors);
       sourceStats.push({
         id: source.id,
         name: source.name,
         status: 'ok',
         nodeCount: sourceNodes.length,
+        filteredNodeCount: filtered.filteredCount,
+        includeFilteredNodeCount: filtered.includeFilteredCount,
+        excludeFilteredNodeCount: filtered.excludeFilteredCount,
         selectorCount: sourceSelectors.length,
         warningCount: fetchWarnings.length + parsed.warnings.length,
         textBytes: Buffer.byteLength(text, 'utf8'),
@@ -252,22 +255,13 @@ async function buildOutbounds(sources, manualOutbounds, template) {
     outbound.detour = detourTag;
   }
 
-  const fixedRegionSelectors = [];
-  const regionSelectorTags = [];
-  for (const region of REGION_GROUPS) {
-    const outbounds = regionBuckets.get(region.label);
-    const resolved = outbounds && outbounds.length > 0 ? outbounds : [DIRECT_TAG];
-    fixedRegionSelectors.push({
-      type: 'selector',
-      tag: region.label,
-      outbounds: resolved,
-      default: resolved[0],
-    });
-    regionSelectorTags.push(region.label);
-  }
+  const sourceRegionSelectorTags = sourceGroups
+    .filter((group) => group.kind === 'region')
+    .map((group) => group.selector.tag);
+  const selectorChoiceTags = sourceRegionSelectorTags.length > 0 ? sourceRegionSelectorTags : [DIRECT_TAG];
 
-  const manualFallback = [...regionSelectorTags, ...manualOutboundTags];
-  const manualDetourOutbounds = buildManualDetourOutbounds(regionSelectorTags, directManualOutboundTags);
+  const manualFallback = [...selectorChoiceTags, ...manualOutboundTags];
+  const manualDetourOutbounds = buildManualDetourOutbounds(selectorChoiceTags, directManualOutboundTags);
   const manualDetourSelectors = manualDetourLinks.map(({ detourTag }) => ({
     type: 'selector',
     tag: detourTag,
@@ -281,7 +275,6 @@ async function buildOutbounds(sources, manualOutbounds, template) {
       outbounds: manualFallback,
       default: manualFallback[0],
     },
-    ...fixedRegionSelectors,
     ...manualDetourSelectors,
     ...sourceGroups.map((group) => group.selector),
   ];
@@ -291,14 +284,13 @@ async function buildOutbounds(sources, manualOutbounds, template) {
       tag === DIRECT_TAG
       || tag === MANUAL_TAG
       || selectors.some((selector) => selector.tag === tag)
-      || regionSelectorTags.includes(tag)
     ) {
       continue;
     }
     selectors.push({
       type: 'selector',
       tag,
-      outbounds: buildCompatOutbounds(regionSelectorTags, manualOutboundTags),
+      outbounds: buildCompatOutbounds(selectorChoiceTags, manualOutboundTags),
       default: MANUAL_TAG,
     });
   }
@@ -308,7 +300,7 @@ async function buildOutbounds(sources, manualOutbounds, template) {
       selectors.push({
         type: 'selector',
         tag,
-        outbounds: buildCompatOutbounds(regionSelectorTags, manualOutboundTags),
+        outbounds: buildCompatOutbounds(selectorChoiceTags, manualOutboundTags),
         default: MANUAL_TAG,
       });
     }
@@ -333,6 +325,95 @@ async function buildOutbounds(sources, manualOutbounds, template) {
       manualOutbounds: manualOutboundStats,
     },
   };
+}
+
+function applyNodeFilter(outbounds, source) {
+  const includeRegex = compileNodeFilterRegex(source?.filterPattern);
+  const excludeRegex = compileNodeFilterRegex(source?.excludeFilterPattern);
+  if (!includeRegex && !excludeRegex) {
+    return {
+      active: false,
+      outbounds,
+      filteredCount: 0,
+      includeFilteredCount: 0,
+      excludeFilteredCount: 0,
+    };
+  }
+
+  const afterInclude = includeRegex
+    ? outbounds.filter((outbound) => testNodeFilter(includeRegex, outbound))
+    : outbounds;
+  const filteredOutbounds = excludeRegex
+    ? afterInclude.filter((outbound) => !testNodeFilter(excludeRegex, outbound))
+    : afterInclude;
+  return {
+    active: true,
+    includeActive: Boolean(includeRegex),
+    excludeActive: Boolean(excludeRegex),
+    outbounds: filteredOutbounds,
+    filteredCount: outbounds.length - filteredOutbounds.length,
+    includeFilteredCount: outbounds.length - afterInclude.length,
+    excludeFilteredCount: afterInclude.length - filteredOutbounds.length,
+  };
+}
+
+export function compileNodeFilterRegex(pattern) {
+  const raw = String(pattern || '').trim();
+  if (!raw) {
+    return null;
+  }
+
+  const literal = parseRegexLiteral(raw);
+  try {
+    return literal
+      ? new RegExp(literal.pattern, literal.flags)
+      : new RegExp(raw, 'i');
+  } catch (error) {
+    throw new Error(`invalid filter regex: ${error.message}`);
+  }
+}
+
+function parseRegexLiteral(value) {
+  if (!value.startsWith('/')) {
+    return null;
+  }
+
+  const slashIndex = value.lastIndexOf('/');
+  if (slashIndex <= 0) {
+    return null;
+  }
+
+  const flags = value.slice(slashIndex + 1);
+  if (!/^[dgimsuvy]*$/.test(flags)) {
+    return null;
+  }
+
+  return {
+    pattern: value.slice(1, slashIndex),
+    flags,
+  };
+}
+
+function getNodeFilterTarget(outbound) {
+  return cleanTag(outbound?.tag || outbound?.server || outbound?.type);
+}
+
+function testNodeFilter(regex, outbound) {
+  regex.lastIndex = 0;
+  return regex.test(getNodeFilterTarget(outbound));
+}
+
+function buildNodeFilterEmptyWarning(sourceName, filtered, originalNodeCount) {
+  if (!filtered.active || originalNodeCount === 0) {
+    return `${sourceName}: no usable nodes`;
+  }
+  if (filtered.includeActive && filtered.includeFilteredCount === originalNodeCount) {
+    return `${sourceName}: no nodes matched include filter`;
+  }
+  if (filtered.excludeActive && filtered.excludeFilteredCount > 0) {
+    return `${sourceName}: all remaining nodes removed by exclude filter`;
+  }
+  return `${sourceName}: all nodes removed by filters`;
 }
 
 function buildSourceSelectors(sourceName, nodes, usedTags) {
@@ -379,18 +460,6 @@ function classifyRegion(tag) {
     }
   }
   return 'other';
-}
-
-function addSourceRegionsToBuckets(regionBuckets, sourceSelectors) {
-  for (const group of sourceSelectors) {
-    if (group.kind !== 'region') {
-      continue;
-    }
-    if (!regionBuckets.has(group.regionLabel)) {
-      regionBuckets.set(group.regionLabel, []);
-    }
-    regionBuckets.get(group.regionLabel).push(group.selector.tag);
-  }
 }
 
 function validateManualOutbound(item) {
