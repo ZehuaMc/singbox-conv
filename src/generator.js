@@ -503,7 +503,7 @@ export function buildCompatOutbounds(regionSelectorTags, manualOutboundTags = []
 }
 
 function buildManualDetourOutbounds(regionSelectorTags, directManualOutboundTags = []) {
-  return [...new Set([...regionSelectorTags, ...directManualOutboundTags, DIRECT_TAG])];
+  return [...new Set([...regionSelectorTags, ...directManualOutboundTags])];
 }
 
 function buildManualDetourTag(tag) {

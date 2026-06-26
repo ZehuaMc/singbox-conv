@@ -199,7 +199,7 @@ test('adds manual outbounds beside subscription region selectors', async (t) => 
   const manualCustomStats = result.stats.manualOutbounds.find((item) => item.id === 'manual-custom');
 
   assert.deepEqual(manualSelector.outbounds, ['机场A / 香港', '机场A / 其他', '手动香港', '家宽落地']);
-  assert.deepEqual(manualHkDetourSelector.outbounds, ['机场A / 香港', '机场A / 其他', '家宽落地', 'direct-out']);
+  assert.deepEqual(manualHkDetourSelector.outbounds, ['机场A / 香港', '机场A / 其他', '家宽落地']);
   assert.equal(manualCustomDetourSelector, undefined);
   for (const tag of ['香港', '日本', '亚太', '美国', '其他']) {
     assert.equal(outbounds.some((item) => item.tag === tag), false);
