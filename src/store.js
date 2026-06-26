@@ -97,6 +97,7 @@ function normalizePersistedManualOutbounds(manualOutbounds) {
         id: String(item.id || ''),
         enabled: item.enabled !== false,
         direct: item.direct === true,
+        includeInDetour: item.includeInDetour !== false,
         outbound,
       };
     })

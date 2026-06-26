@@ -68,6 +68,16 @@ test('writes and reads settings with manual outbounds', async (t) => {
           server_port: 1080,
         },
       },
+      {
+        id: 'manual-b',
+        enabled: true,
+        direct: true,
+        includeInDetour: false,
+        outbound: {
+          type: 'direct',
+          tag: '直连手动',
+        },
+      },
     ],
   });
 
@@ -76,10 +86,13 @@ test('writes and reads settings with manual outbounds', async (t) => {
   assert.equal(settings.sources[0].enabled, false);
   assert.equal(settings.sources[0].filterPattern, '香港|日本');
   assert.equal(settings.sources[0].excludeFilterPattern, '倍率|过期');
-  assert.equal(settings.manualOutbounds.length, 1);
+  assert.equal(settings.manualOutbounds.length, 2);
   assert.equal(settings.manualOutbounds[0].direct, true);
+  assert.equal(settings.manualOutbounds[0].includeInDetour, true);
   assert.equal(settings.manualOutbounds[0].outbound.tag, '韩国手动');
   assert.equal(settings.manualOutbounds[0].outbound.detour, undefined);
+  assert.equal(settings.manualOutbounds[1].includeInDetour, false);
+  assert.equal(settings.manualOutbounds[1].outbound.tag, '直连手动');
 });
 
 test('migrates legacy exclude filter mode to exclude regex', async (t) => {

@@ -232,9 +232,10 @@ button.secondary:hover {
 }
 
 .manual-row-head {
-  display: grid;
-  grid-template-columns: 84px 84px 72px;
-  align-items: end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
 }
 
 .toggle {
@@ -247,6 +248,14 @@ button.secondary:hover {
 .toggle input {
   width: 18px;
   height: 18px;
+}
+
+.detour-candidate-toggle {
+  min-width: 168px;
+}
+
+.manual-row-head .remove-button {
+  margin-left: auto;
 }
 
 .source-order {
@@ -404,6 +413,11 @@ button.secondary:disabled:hover {
   }
 
   .manual-row-head {
+    display: grid;
     grid-template-columns: 1fr;
+  }
+
+  .manual-row-head .remove-button {
+    margin-left: 0;
   }
 }

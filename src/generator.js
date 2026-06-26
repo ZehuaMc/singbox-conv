@@ -103,6 +103,7 @@ export async function previewSources(sources, manualOutbounds = []) {
       id: item.id,
       enabled: item.enabled !== false,
       direct: item.direct === true,
+      includeInDetour: item.direct === true && item.includeInDetour !== false,
       tag: validation.ok ? validation.outbound.tag : '',
       type: validation.ok ? validation.outbound.type : '',
       detour: validation.ok && item.direct !== true ? buildManualDetourTag(validation.outbound.tag) : '',
@@ -124,7 +125,7 @@ async function buildOutbounds(sources, manualOutbounds, template) {
     ...COMPAT_SELECTOR_TAGS,
   ]);
   const manualOutboundTags = [];
-  const directManualOutboundTags = [];
+  const directManualDetourCandidateTags = [];
   const directManualOutbounds = [];
   const manualDetourLinks = [];
   const sourceStats = [];
@@ -224,11 +225,14 @@ async function buildOutbounds(sources, manualOutbounds, template) {
       manualTagRenames.set(originalTag, tag);
     }
     const direct = item.direct === true;
+    const includeInDetour = item.includeInDetour !== false;
     const detourTag = direct ? '' : uniqueTag(buildManualDetourTag(tag), usedTags);
     next.tag = tag;
     proxyOutbounds.push(next);
     if (direct) {
-      directManualOutboundTags.push(tag);
+      if (includeInDetour) {
+        directManualDetourCandidateTags.push(tag);
+      }
       directManualOutbounds.push(next);
     } else {
       manualDetourLinks.push({ outbound: next, detourTag });
@@ -243,6 +247,7 @@ async function buildOutbounds(sources, manualOutbounds, template) {
       originalTag,
       tag,
       renamed: tag !== originalTag,
+      includeInDetour: direct && includeInDetour,
       detour: detourTag,
     });
   }
@@ -261,7 +266,7 @@ async function buildOutbounds(sources, manualOutbounds, template) {
   const selectorChoiceTags = sourceRegionSelectorTags.length > 0 ? sourceRegionSelectorTags : [DIRECT_TAG];
 
   const manualFallback = [...selectorChoiceTags, ...manualOutboundTags];
-  const manualDetourOutbounds = buildManualDetourOutbounds(selectorChoiceTags, directManualOutboundTags);
+  const manualDetourOutbounds = buildManualDetourOutbounds(selectorChoiceTags, directManualDetourCandidateTags);
   const manualDetourSelectors = manualDetourLinks.map(({ detourTag }) => ({
     type: 'selector',
     tag: detourTag,

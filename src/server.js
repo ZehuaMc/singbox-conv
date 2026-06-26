@@ -357,6 +357,7 @@ async function buildPreview(sources, manualOutbounds, requestContext) {
         id: item.id,
         enabled: item.enabled,
         direct: item.direct === true,
+        includeInDetour: item.includeInDetour === true,
         type: item.type,
         tag: item.tag,
         detour: item.detour,
@@ -457,6 +458,7 @@ function normalizeManualOutbounds(manualOutbounds) {
       id: item.id ? String(item.id) : crypto.randomUUID(),
       enabled: item.enabled !== false,
       direct: item.direct === true,
+      includeInDetour: item.includeInDetour !== false,
       outbound: normalizedOutbound,
     };
   });
@@ -706,6 +708,7 @@ function summarizeManualOutbounds(manualOutbounds) {
     id: item.id,
     enabled: item.enabled !== false,
     direct: item.direct === true,
+    includeInDetour: item.direct === true && item.includeInDetour !== false,
     type: item.outbound?.type || '',
     tag: item.outbound?.tag || '',
   }));

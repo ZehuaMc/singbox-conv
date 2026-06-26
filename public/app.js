@@ -41,6 +41,7 @@ document.querySelector('#addManualOutboundButton').addEventListener('click', () 
     id: createId(),
     enabled: true,
     direct: false,
+    includeInDetour: true,
     outbound: {
       type: '',
       tag: '',
@@ -205,7 +206,9 @@ async function previewSources() {
       lines.push('', 'Manual outbounds:');
       for (const outbound of result.manualOutbounds) {
         const stateText = outbound.enabled ? `${outbound.type || '-'} ${outbound.tag || '-'}` : 'disabled';
-        const modeText = outbound.direct ? ' direct' : outbound.detour ? ` detour=${outbound.detour}` : '';
+        const modeText = outbound.direct
+          ? ` direct detour-candidate=${outbound.includeInDetour !== false ? 'on' : 'off'}`
+          : outbound.detour ? ` detour=${outbound.detour}` : '';
         lines.push(`${stateText}${modeText}${outbound.error ? `, ${outbound.error}` : ''}`);
       }
     }
@@ -356,6 +359,10 @@ function renderManualOutbounds() {
           <input data-field="direct" type="checkbox">
           直连
         </label>
+        <label class="toggle detour-candidate-toggle" data-detour-candidate-option hidden>
+          <input data-field="includeInDetour" type="checkbox">
+          加入 Detour 候选
+        </label>
         <button class="secondary remove-button" type="button">删除</button>
       </div>
       <label>
@@ -365,7 +372,12 @@ function renderManualOutbounds() {
     `;
     row.querySelector('[data-field="enabled"]').checked = item.enabled !== false;
     row.querySelector('[data-field="direct"]').checked = item.direct === true;
+    row.querySelector('[data-field="includeInDetour"]').checked = item.includeInDetour !== false;
     row.querySelector('[data-field="outbound"]').value = JSON.stringify(outbound, null, 2);
+    row.querySelector('[data-field="direct"]').addEventListener('change', () => {
+      syncManualOutboundRow(row);
+    });
+    syncManualOutboundRow(row);
     row.querySelector('.remove-button').addEventListener('click', () => {
       readSourcesFromDom();
       if (!readManualOutboundsFromDom(item.id)) {
@@ -375,6 +387,19 @@ function renderManualOutbounds() {
     });
     manualOutboundsList.append(row);
   }
+}
+
+function syncManualOutboundRow(row) {
+  const directInput = row.querySelector('[data-field="direct"]');
+  const includeInDetourInput = row.querySelector('[data-field="includeInDetour"]');
+  const option = row.querySelector('[data-detour-candidate-option]');
+  if (!directInput || !includeInDetourInput || !option) {
+    return;
+  }
+
+  const direct = directInput.checked;
+  includeInDetourInput.disabled = !direct;
+  option.hidden = !direct;
 }
 
 function renderLogs(logs) {
@@ -463,6 +488,7 @@ function readManualOutboundsFromDom(skipId = '') {
       id: row.dataset.id,
       enabled: row.querySelector('[data-field="enabled"]').checked,
       direct: row.querySelector('[data-field="direct"]').checked,
+      includeInDetour: row.querySelector('[data-field="includeInDetour"]').checked,
       outbound: normalizeManualOutboundForSave(outbound),
     });
   }

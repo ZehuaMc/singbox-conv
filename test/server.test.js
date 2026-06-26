@@ -24,13 +24,16 @@ test('front-end exposes manual outbound controls', async () => {
   assert.doesNotMatch(html, /id="detourOptions"/);
   assert.doesNotMatch(js, /data-field="detour"/);
   assert.match(js, /data-field="direct"/);
+  assert.match(js, /data-field="includeInDetour"/);
   assert.match(html, /直连手动出站/);
+  assert.match(js, /加入 Detour 候选/);
   assert.doesNotMatch(js, /detourOptionValues/);
   assert.doesNotMatch(js, /setupDetourCombobox/);
   assert.doesNotMatch(js, /openDetourMenu/);
   assert.doesNotMatch(js, /closeDetourMenus/);
   assert.doesNotMatch(js, /aria-expanded/);
   assert.match(js, /normalizeManualOutboundForSave/);
+  assert.match(js, /syncManualOutboundRow/);
   assert.doesNotMatch(html, /id="regionOptions"/);
   assert.match(js, /manualOutbounds/);
   assert.match(js, /#saveManualOutboundsButton/);

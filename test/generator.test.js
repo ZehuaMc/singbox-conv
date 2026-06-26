@@ -185,6 +185,16 @@ test('adds manual outbounds beside subscription region selectors', async (t) => 
         server_port: 1080,
       },
     },
+    {
+      id: 'manual-direct-opt-out',
+      enabled: true,
+      direct: true,
+      includeInDetour: false,
+      outbound: {
+        type: 'direct',
+        tag: '本地直连',
+      },
+    },
   ]);
 
   const outbounds = result.config.outbounds;
@@ -193,12 +203,14 @@ test('adds manual outbounds beside subscription region selectors', async (t) => 
   const sourceOtherSelector = outbounds.find((item) => item.tag === '机场A / 其他');
   const manualHk = outbounds.find((item) => item.tag === '手动香港');
   const manualCustom = outbounds.find((item) => item.tag === '家宽落地');
+  const manualDirectOptOut = outbounds.find((item) => item.tag === '本地直连');
   const manualHkDetourSelector = outbounds.find((item) => item.tag === '🧭 手动香港 Detour');
   const manualCustomDetourSelector = outbounds.find((item) => item.tag === '🧭 家宽落地 Detour');
   const compatSelector = outbounds.find((item) => item.tag === '🏠 家宽');
   const manualCustomStats = result.stats.manualOutbounds.find((item) => item.id === 'manual-custom');
+  const manualDirectOptOutStats = result.stats.manualOutbounds.find((item) => item.id === 'manual-direct-opt-out');
 
-  assert.deepEqual(manualSelector.outbounds, ['机场A / 香港', '机场A / 其他', '手动香港', '家宽落地']);
+  assert.deepEqual(manualSelector.outbounds, ['机场A / 香港', '机场A / 其他', '手动香港', '家宽落地', '本地直连']);
   assert.deepEqual(manualHkDetourSelector.outbounds, ['机场A / 香港', '机场A / 其他', '家宽落地']);
   assert.equal(manualCustomDetourSelector, undefined);
   for (const tag of ['香港', '日本', '亚太', '美国', '其他']) {
@@ -208,12 +220,15 @@ test('adds manual outbounds beside subscription region selectors', async (t) => 
   assert.ok(sourceOtherSelector.outbounds.some((tag) => tag.includes('美国01')));
   assert.ok(sourceOtherSelector.outbounds.some((tag) => tag.includes('火星01')));
   assert.ok(sourceOtherSelector.outbounds.some((tag) => tag.includes('新加坡01')));
-  assert.deepEqual(compatSelector.outbounds, ['🚀 手动选择', '手动香港', '家宽落地', '机场A / 香港', '机场A / 其他']);
+  assert.deepEqual(compatSelector.outbounds, ['🚀 手动选择', '手动香港', '家宽落地', '本地直连', '机场A / 香港', '机场A / 其他']);
   assert.equal(manualHk.detour, '🧭 手动香港 Detour');
   assert.equal(manualCustom.detour, undefined);
+  assert.equal(manualDirectOptOut.detour, undefined);
   assert.equal(manualCustomStats.direct, true);
+  assert.equal(manualCustomStats.includeInDetour, true);
+  assert.equal(manualDirectOptOutStats.includeInDetour, false);
   assert.equal(manualCustomStats.detour, '');
-  assert.equal(result.stats.manualOutboundCount, 2);
+  assert.equal(result.stats.manualOutboundCount, 3);
 });
 
 test('uses subscription region selectors directly across sources', async (t) => {
