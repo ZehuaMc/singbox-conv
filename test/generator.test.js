@@ -40,8 +40,14 @@ test('builds config by replacing only outbounds', async (t) => {
   assert.deepEqual(result.config.dns, template.dns);
   assert.notDeepEqual(result.config.outbounds, template.outbounds);
   assert.equal(result.config.outbounds.some((item) => item.tag === '机场A'), false);
-  assert.ok(result.config.outbounds.some((item) => item.tag === '机场A / 香港'));
-  assert.ok(result.config.outbounds.some((item) => item.tag === '机场A / 其他'));
+  const sourceHkGroup = result.config.outbounds.find((item) => item.tag === '机场A / 香港');
+  const sourceOtherGroup = result.config.outbounds.find((item) => item.tag === '机场A / 其他');
+  assert.equal(sourceHkGroup.type, 'urltest');
+  assert.equal(sourceHkGroup.url, 'https://www.gstatic.com/generate_204');
+  assert.equal(sourceHkGroup.interval, '1m');
+  assert.equal(sourceHkGroup.tolerance, 50);
+  assert.equal(sourceHkGroup.default, undefined);
+  assert.equal(sourceOtherGroup.type, 'urltest');
   assert.ok(result.config.outbounds.some((item) => item.tag === '🚀 手动选择'));
   assert.ok(result.config.outbounds.some((item) => item.tag === '🏠 家宽'));
   for (const tag of ['香港', '日本', '亚太', '美国', '其他']) {
@@ -135,7 +141,7 @@ test('applies include regex before exclude regex', async (t) => {
   assert.deepEqual(manualSelector.outbounds, ['机场A / 香港']);
 });
 
-test('adds manual outbounds beside subscription region selectors', async (t) => {
+test('adds manual outbounds beside subscription region urltests', async (t) => {
   const cacheDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sing-box-conv-manual-cache-'));
   const ss = 'ss://YWVzLTI1Ni1nY206cGFzcw@example.com:8388#香港01';
   const vmess = `vmess://${Buffer.from(JSON.stringify({
@@ -216,6 +222,8 @@ test('adds manual outbounds beside subscription region selectors', async (t) => 
   for (const tag of ['香港', '日本', '亚太', '美国', '其他']) {
     assert.equal(outbounds.some((item) => item.tag === tag), false);
   }
+  assert.equal(sourceHkSelector.type, 'urltest');
+  assert.equal(sourceOtherSelector.type, 'urltest');
   assert.ok(sourceHkSelector.outbounds.some((tag) => tag.includes('香港01')));
   assert.ok(sourceOtherSelector.outbounds.some((tag) => tag.includes('美国01')));
   assert.ok(sourceOtherSelector.outbounds.some((tag) => tag.includes('火星01')));
@@ -231,7 +239,7 @@ test('adds manual outbounds beside subscription region selectors', async (t) => 
   assert.equal(result.stats.manualOutboundCount, 3);
 });
 
-test('uses subscription region selectors directly across sources', async (t) => {
+test('uses subscription region urltests directly across sources', async (t) => {
   const cacheDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sing-box-conv-region-cache-'));
   const sourceA = Buffer.from([
     'ss://YWVzLTI1Ni1nY206cGFzcw@a-us.example.com:8388#美国A01',
@@ -273,6 +281,10 @@ test('uses subscription region selectors directly across sources', async (t) => 
   const sourceBJpSelector = outbounds.find((item) => item.tag === '机场B / 日本');
 
   assert.deepEqual(manualSelector.outbounds, ['机场A / 日本', '机场A / 其他', '机场B / 日本', '机场B / 其他']);
+  assert.equal(sourceAOtherSelector.type, 'urltest');
+  assert.equal(sourceAJpSelector.type, 'urltest');
+  assert.equal(sourceBOtherSelector.type, 'urltest');
+  assert.equal(sourceBJpSelector.type, 'urltest');
   assert.ok(sourceAOtherSelector.outbounds.some((tag) => tag.includes('美国A01')));
   assert.ok(sourceAJpSelector.outbounds.some((tag) => tag.includes('日本A01')));
   assert.ok(sourceBOtherSelector.outbounds.some((tag) => tag.includes('美国B01')));

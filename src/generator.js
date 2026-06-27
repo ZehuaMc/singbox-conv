@@ -25,6 +25,9 @@ const FIXED_REGION_LABELS = new Set(REGION_GROUPS.map((region) => region.label))
 const MANUAL_TAG = '🚀 手动选择';
 const DIRECT_TAG = 'direct-out';
 const COMPAT_SELECTOR_TAGS = ['🏠 家宽', '📠 电报', '🚨 Block', '🔦 Google'];
+const URLTEST_URL = 'https://www.gstatic.com/generate_204';
+const URLTEST_INTERVAL = '1m';
+const URLTEST_TOLERANCE = 50;
 
 export async function buildConfigFromSources(sources, manualOutbounds = []) {
   const template = await readTemplate();
@@ -434,10 +437,12 @@ function buildSourceSelectors(sourceName, nodes, usedTags) {
       kind: 'region',
       regionLabel: region.label,
       selector: {
-        type: 'selector',
+        type: 'urltest',
         tag,
         outbounds: regionNodes.map((node) => node.tag),
-        default: regionNodes[0].tag,
+        url: URLTEST_URL,
+        interval: URLTEST_INTERVAL,
+        tolerance: URLTEST_TOLERANCE,
       },
     });
   }
